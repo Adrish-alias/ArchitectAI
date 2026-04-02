@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Architecture Result — ArchitectAI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{
+  --bg:#03050d;--s1:#070c18;
+  --card:rgba(255,255,255,.033);--border:rgba(255,255,255,.07);
+  --cyan:#00f0b4;--blue:#3d7fff;--magenta:#ff3daa;--gold:#ffd060;
+  --text:#eef0f8;--muted:#5a6278;--muted2:#8892a8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-weight:300;overflow-x:hidden;cursor:none}
+#cur{position:fixed;width:8px;height:8px;border-radius:50%;background:var(--cyan);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen}
+#cur2{position:fixed;width:32px;height:32px;border-radius:50%;border:1px solid rgba(0,240,180,.3);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:left .12s ease,top .12s ease}
+body::after{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");pointer-events:none;z-index:900}
+
+/* NAV */
+nav{position:fixed;top:0;inset-x:0;z-index:500;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(3,5,13,.82);backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.1em;background:linear-gradient(110deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none}
+.nav-mid{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted2)}
+.nav-mid .sep{color:var(--muted);opacity:.4}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nbtn{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:7px 16px;border-radius:6px;cursor:none;transition:all .2s;text-decoration:none;border:1px solid var(--border);color:var(--muted2)}
+.nbtn:hover{border-color:rgba(0,240,180,.3);color:var(--text)}
+.nbtn.primary{background:linear-gradient(110deg,var(--cyan),var(--blue));color:#000;border:none;font-weight:600}
+.nbtn.primary:hover{box-shadow:0 0 30px rgba(0,240,180,.25);transform:translateY(-1px)}
+
+/* LAYOUT */
+.page{padding-top:68px;min-height:100vh}
+.layout{display:grid;grid-template-columns:300px 1fr 300px;gap:0;min-height:calc(100vh - 68px)}
+
+/* LEFT SIDEBAR */
+.sidebar-left{border-right:1px solid var(--border);padding:28px 20px;position:sticky;top:68px;height:calc(100vh - 68px);overflow-y:auto;background:rgba(3,5,13,.6)}
+.sidebar-left::-webkit-scrollbar{width:3px}
+.sidebar-left::-webkit-scrollbar-thumb{background:rgba(0,240,180,.2);border-radius:2px}
+
+/* MAIN CENTER */
+.main-center{padding:32px 32px;overflow:hidden}
+.section-block{margin-bottom:36px}
+.sec-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--cyan);letter-spacing:.16em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec-label::after{content:'';flex:1;height:1px;background:rgba(0,240,180,.1)}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.04em;margin-bottom:6px}
+
+/* DIAGRAM SECTION */
+.diagram-wrap{background:rgba(5,9,18,.9);border:1px solid rgba(0,240,180,.1);border-radius:16px;padding:28px;position:relative;overflow:hidden;min-height:500px}
+.diagram-wrap::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,180,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,180,.018) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.diagram-wrap::after{content:'';position:absolute;top:0;inset-x:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue),var(--magenta))}
+.diagram-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;position:relative;z-index:2}
+.diagram-toolbar .dtag{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+.dtag .dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:blk 1.4s ease infinite}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.15}}
+.diagram-actions{margin-left:auto;display:flex;gap:8px}
+.dact-btn{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:5px 12px;border-radius:5px;cursor:none;border:1px solid var(--border);color:var(--muted2);background:transparent;transition:all .18s}
+.dact-btn:hover{border-color:rgba(0,240,180,.25);color:var(--cyan)}
+#diagram-render{position:relative;z-index:2;overflow:auto}
+#diagram-render .mermaid svg{width:100%;height:auto;min-height:400px}
+#raw-mermaid{display:none;background:rgba(0,0,0,.5);border:1px solid rgba(0,240,180,.1);border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted2);white-space:pre-wrap;max-height:500px;overflow-y:auto;line-height:1.6;position:relative;z-index:2}
+
+/* OVERVIEW */
+.overview-card{background:rgba(0,240,180,.03);border:1px solid rgba(0,240,180,.1);border-radius:12px;padding:20px;margin-bottom:16px}
+.overview-strategy{font-size:.88rem;color:var(--text);line-height:1.75;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.05)}
+.flows-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.flow-item{padding:12px 14px;border-radius:9px;background:rgba(0,0,0,.3)}
+.flow-item.read{border-left:2px solid var(--cyan)}
+.flow-item.write{border-left:2px solid var(--blue)}
+.flow-item.realtime{border-left:2px solid var(--magenta)}
+.flow-item.async{border-left:2px solid var(--gold)}
+.flow-item.full{grid-column:1/-1}
+.flow-label{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.flow-item.read .flow-label{color:var(--cyan)}
+.flow-item.write .flow-label{color:#80aaff}
+.flow-item.realtime .flow-label{color:var(--magenta)}
+.flow-item.async .flow-label{color:var(--gold)}
+.flow-text{font-size:.79rem;color:var(--muted2);line-height:1.6}
+
+/* RIGHT SIDEBAR */
+.sidebar-right{border-left:1px solid var(--border);position:sticky;top:68px;height:calc(100vh - 68px);overflow-y:auto;background:rgba(3,5,13,.6)}
+.sidebar-right::-webkit-scrollbar{width:3px}
+.sidebar-right::-webkit-scrollbar-thumb{background:rgba(0,240,180,.2);border-radius:2px}
+.sr-section{padding:24px 20px;border-bottom:1px solid var(--border)}
+.sr-section:last-child{border-bottom:none}
+.sr-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--cyan);letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px}
+
+/* COST SIDEBAR */
+.cost-total{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;background:linear-gradient(110deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:2px}
+.cost-sub{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.05em;margin-bottom:16px}
+.cost-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.cost-name{font-size:.72rem;color:var(--muted2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cost-bar-wrap{width:50px;height:3px;background:rgba(255,255,255,.05);border-radius:2px;flex-shrink:0}
+.cost-bar-fill{height:100%;border-radius:2px;transition:width 1.4s cubic-bezier(.25,.8,.25,1)}
+.cost-val{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text);min-width:56px;text-align:right;flex-shrink:0}
+.cost-note{margin-top:14px;padding:10px 12px;background:rgba(0,240,180,.04);border:1px solid rgba(0,240,180,.1);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--cyan);line-height:1.6}
+
+/* SERVICES SIDEBAR */
+.svc-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.svc-item:last-child{border-bottom:none}
+.svc-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:4px}
+.svc-icon{font-size:.85rem;flex-shrink:0;width:20px;text-align:center}
+.svc-name{font-size:.78rem;color:var(--text);line-height:1.3;font-weight:500}
+.svc-role{font-size:.71rem;color:var(--muted2);line-height:1.5;padding-left:28px;margin-bottom:3px}
+.svc-just{font-size:.68rem;color:rgba(0,240,180,.6);padding-left:28px;line-height:1.4;font-family:'JetBrains Mono',monospace}
+.svc-cost-tag{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--gold);padding-left:28px;margin-top:3px;display:flex;align-items:center;gap:3px}
+
+/* IMPL STEPS */
+.impl-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.impl-item:last-child{border-bottom:none}
+.impl-item-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.impl-num{width:22px;height:22px;border-radius:50%;background:rgba(0,240,180,.1);border:1px solid rgba(0,240,180,.2);color:var(--cyan);font-family:'Bebas Neue',sans-serif;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.impl-phase-name{font-size:.78rem;color:var(--text);flex:1;line-height:1.3}
+.impl-dur-tag{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--gold);background:rgba(255,208,96,.07);border:1px solid rgba(255,208,96,.14);padding:1px 7px;border-radius:3px;flex-shrink:0}
+.impl-tasks{list-style:none;padding-left:30px}
+.impl-tasks li{font-size:.72rem;color:var(--muted2);line-height:1.5;padding:2px 0;display:flex;gap:5px}
+.impl-tasks li::before{content:'·';color:var(--cyan);flex-shrink:0}
+
+/* SCALE PILL */
+.scale-pill{display:inline-flex;align-items:center;gap:7px;background:rgba(0,240,180,.07);border:1px solid rgba(0,240,180,.18);padding:5px 13px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--cyan);letter-spacing:.05em;margin-bottom:20px}
+.scale-pill .dot{width:5px;height:5px;background:var(--cyan);border-radius:50%;animation:blk 1.4s ease infinite}
+
+/* NO DATA STATE */
+.no-data{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;text-align:center;padding:40px}
+.no-data-icon{font-size:3rem;opacity:.3}
+.no-data-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.04em;color:rgba(255,255,255,.2)}
+.no-data-sub{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);line-height:1.7;max-width:320px}
+.go-back-btn{background:linear-gradient(110deg,var(--cyan),var(--blue));color:#000;padding:13px 32px;border-radius:8px;font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.1em;text-decoration:none;cursor:none;transition:all .25s;margin-top:4px}
+.go-back-btn:hover{box-shadow:0 0 40px rgba(0,240,180,.3);transform:translateY(-2px)}
+
+/* TABS */
+.tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)}
+.tab{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:10px 18px;cursor:none;color:var(--muted2);border-bottom:2px solid transparent;transition:all .18s;letter-spacing:.04em;background:transparent;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* STAT PILLS ROW */
+.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+.stat-pill{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;display:flex;flex-direction:column;gap:3px;min-width:100px}
+.stat-pill-val{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.04em;line-height:1}
+.stat-pill-key{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.stat-cyan .stat-pill-val{color:var(--cyan)}
+.stat-blue .stat-pill-val{color:#80aaff}
+.stat-gold .stat-pill-val{color:var(--gold)}
+.stat-mag .stat-pill-val{color:var(--magenta)}
+
+@media(max-width:1200px){.layout{grid-template-columns:260px 1fr 260px}}
+@media(max-width:900px){
+  nav{padding:14px 16px}
+  .layout{grid-template-columns:1fr}
+  .sidebar-left,.sidebar-right{position:static;height:auto;border-right:none;border-left:none;border-bottom:1px solid var(--border)}
+  .main-center{padding:24px 16px}
+  .flows-grid{grid-template-columns:1fr}
+  .flow-item.full{grid-column:1}
+}
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+
+<nav>
+  <a href="index.html" class="logo">ArchitectAI</a>
+  <div class="nav-mid">
+    <span>Architecture Result</span>
+    <span class="sep">/</span>
+    <span id="nav-project-name" style="color:var(--text)">Loading...</span>
+  </div>
+  <div class="nav-right">
+    <button class="nbtn" onclick="toggleRaw()">⟨/⟩ Raw Mermaid</button>
+    <button class="nbtn" onclick="exportJSON()">↓ Export JSON</button>
+    <a href="index.html" class="nbtn primary">← Back to Generator</a>
+  </div>
+</nav>
+
+<div class="page" id="page-content">
+  <!-- NO DATA STATE -->
+  <div class="no-data" id="no-data-state" style="display:none">
+    <div class="no-data-icon">📭</div>
+    <div class="no-data-title">NO ARCHITECTURE LOADED</div>
+    <div class="no-data-sub">Go back to the generator, describe your project, and click Generate Architecture. Results will appear here automatically.</div>
+    <a href="index.html" class="go-back-btn">← Generate Architecture</a>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="layout" id="main-layout" style="display:none">
+
+    <!-- LEFT SIDEBAR: Services + Impl -->
+    <div class="sidebar-left">
+      <div style="padding:20px 0 0">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--cyan);letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;padding:0 0 10px;border-bottom:1px solid var(--border)">AWS Services</div>
+        <div id="sidebar-services"></div>
+
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:#80aaff;letter-spacing:.14em;text-transform:uppercase;margin:20px 0 14px;padding-top:16px;border-top:1px solid var(--border)">Implementation Plan</div>
+        <div id="sidebar-impl"></div>
+      </div>
+    </div>
+
+    <!-- CENTER: Diagram + Overview -->
+    <div class="main-center">
+
+      <!-- STATS ROW -->
+      <div class="stat-row" id="stats-row"></div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('diagram',this)">Architecture Diagram</button>
+        <button class="tab" onclick="switchTab('overview',this)">System Overview</button>
+      </div>
+
+      <!-- DIAGRAM TAB -->
+      <div class="tab-panel active" id="tab-diagram">
+        <div class="section-block" style="margin-top:20px">
+          <div class="diagram-wrap">
+            <div class="diagram-toolbar">
+              <div class="dtag"><span class="dot"></span>Mermaid.js · Live Render · graph TD</div>
+              <div class="diagram-actions">
+                <button class="dact-btn" onclick="zoomIn()">+ Zoom</button>
+                <button class="dact-btn" onclick="zoomOut()">− Zoom</button>
+                <button class="dact-btn" onclick="resetZoom()">↺ Reset</button>
+              </div>
+            </div>
+            <div id="diagram-render"></div>
+            <pre id="raw-mermaid"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- OVERVIEW TAB -->
+      <div class="tab-panel" id="tab-overview">
+        <div class="section-block" style="margin-top:20px">
+          <div class="sec-label">Architecture Strategy</div>
+          <div class="overview-card" id="overview-card"></div>
+          <div class="sec-label" style="margin-top:24px">Scale Analysis</div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;font-size:.84rem;color:var(--muted2);line-height:1.75" id="scale-analysis-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR: Cost -->
+    <div class="sidebar-right">
+      <div class="sr-section">
+        <div class="sr-label">Cost Estimate</div>
+        <div id="cost-sidebar"></div>
+      </div>
+      <div class="sr-section" id="budget-warn-wrap" style="display:none">
+        <div style="background:rgba(255,61,170,.05);border:1px solid rgba(255,61,170,.15);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:.63rem;color:var(--magenta);line-height:1.6">
+          <strong style="display:block;margin-bottom:4px;font-family:'Bebas Neue',sans-serif;font-size:.85rem">⚠ BUDGET ALERT</strong>
+          <span id="budget-warn-text"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* CURSOR */
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
+(function l(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;cur2.style.left=rx+'px';cur2.style.top=ry+'px';requestAnimationFrame(l)})();
+
+/* MERMAID */
+mermaid.initialize({
+  startOnLoad:false, theme:'dark',
+  themeVariables:{
+    primaryColor:'rgba(0,240,180,.12)', primaryTextColor:'#eef0f8',
+    primaryBorderColor:'rgba(0,240,180,.45)', lineColor:'rgba(0,240,180,.55)',
+    secondaryColor:'rgba(61,127,255,.18)', tertiaryColor:'rgba(255,61,170,.15)',
+    edgeLabelBackground:'rgba(3,5,13,.9)', clusterBkg:'rgba(7,12,24,.75)',
+    clusterBorder:'rgba(0,240,180,.18)', titleColor:'#eef0f8',
+    nodeTextColor:'#eef0f8', fontFamily:'JetBrains Mono, monospace',
+    fontSize:'13px',
+  },
+  flowchart:{useMaxWidth:true, htmlLabels:true, curve:'basis', padding:20}
+});
+
+/* TAB SWITCHING */
+function switchTab(name, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+/* ZOOM */
+let zoomLevel=1;
+function zoomIn(){zoomLevel=Math.min(zoomLevel+.15,2.5);applyZoom()}
+function zoomOut(){zoomLevel=Math.max(zoomLevel-.15,.4);applyZoom()}
+function resetZoom(){zoomLevel=1;applyZoom()}
+function applyZoom(){
+  const el=document.querySelector('#diagram-render svg');
+  if(el) el.style.transform=`scale(${zoomLevel})`;
+  else document.getElementById('diagram-render').style.transform=`scale(${zoomLevel})`;
+}
+
+/* RAW MERMAID TOGGLE */
+let rawVisible=false;
+function toggleRaw(){
+  rawVisible=!rawVisible;
+  document.getElementById('raw-mermaid').style.display=rawVisible?'block':'none';
+  document.getElementById('diagram-render').style.display=rawVisible?'none':'block';
+}
+
+/* EXPORT JSON */
+function exportJSON(){
+  const data=sessionStorage.getItem('architectureData');
+  if(!data){alert('No data to export.');return;}
+  const blob=new Blob([JSON.stringify(JSON.parse(data),null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='architecture.json';
+  a.click();
+}
+
+/* HELPERS */
+function getServiceIcon(name){
+  const n=name.toLowerCase();
+  if(n.includes('cognito'))return'🔐';
+  if(n.includes('lambda'))return'λ';
+  if(n.includes('s3'))return'🪣';
+  if(n.includes('dynamodb'))return'🗃';
+  if(n.includes('ecs'))return'🐳';
+  if(n.includes('elasticache'))return'⚡';
+  if(n.includes('sqs'))return'📬';
+  if(n.includes('opensearch'))return'🔍';
+  if(n.includes('cloudfront'))return'🌐';
+  if(n.includes('api gateway'))return'⚙️';
+  return'☁️';
+}
+function parseCostNum(str){
+  if(!str)return 0;
+  const m=(str.match(/[\d,]+/)||[])[0];
+  return m?parseInt(m.replace(/,/g,'')):0;
+}
+
+/* MAIN RENDER */
+function renderPage(data){
+  /* ── NAV PROJECT NAME ── */
+  const nameMatch=(data.scale_analysis||'').match(/([A-Z][^.]+)/);
+  document.getElementById('nav-project-name').textContent=data.scale_analysis
+    ?data.scale_analysis.split(',')[0].slice(0,50):'Architecture';
+
+  /* ── STATS ROW ── */
+  const svcs=data.aws_services||[];
+  const cb=data.cost_breakdown||{};
+  const scale=(data.scale_analysis||'').match(/free_tier|growth|scale|large_scale|distributed/i);
+  const statsRow=document.getElementById('stats-row');
+  statsRow.innerHTML=`
+    <div class="stat-pill stat-cyan"><div class="stat-pill-val">${svcs.length}</div><div class="stat-pill-key">Services</div></div>
+    <div class="stat-pill stat-gold"><div class="stat-pill-val">${cb.monthly_estimate||'—'}</div><div class="stat-pill-key">Monthly Est.</div></div>
+    <div class="stat-pill stat-blue"><div class="stat-pill-val">${scale?scale[0].replace('_',' ').toUpperCase():'—'}</div><div class="stat-pill-key">Scale Tier</div></div>
+    <div class="stat-pill stat-mag"><div class="stat-pill-val">${(data.implementation_steps||[]).length}</div><div class="stat-pill-key">Impl Phases</div></div>`;
+
+  /* ── DIAGRAM ── */
+  const mermaidSrc=(data.mermaid||'').trim();
+  const dr=document.getElementById('diagram-render');
+  document.getElementById('raw-mermaid').textContent=mermaidSrc;
+  dr.innerHTML='';
+  if(mermaidSrc&&mermaidSrc.startsWith('graph')){
+    const wrap=document.createElement('div');
+    wrap.className='mermaid';
+    wrap.textContent=mermaidSrc;
+    dr.appendChild(wrap);
+    mermaid.run({nodes:[wrap]}).then(()=>{
+      const svg=dr.querySelector('svg');
+      if(svg){
+        svg.style.maxWidth='100%';
+        svg.style.height='auto';
+      }
+    }).catch(e=>{
+      dr.innerHTML=`<div style="padding:16px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--magenta);margin-bottom:10px">Diagram render error — showing raw code:</div>
+        <pre style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted2);white-space:pre-wrap;line-height:1.6">${mermaidSrc}</pre></div>`;
+    });
+  } else {
+    dr.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;min-height:300px;flex-direction:column;gap:12px">
+      <div style="font-size:2rem;opacity:.3">⬡</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted)">Diagram not available</div>
+    </div>`;
+  }
+
+  /* ── OVERVIEW ── */
+  const ov=data.architecture_overview||{};
+  const flowDefs=[
+    {key:'read_flow',label:'Read Flow',cls:'read'},
+    {key:'write_flow',label:'Write Flow',cls:'write'},
+    {key:'realtime_flow',label:'Realtime Flow',cls:'realtime'},
+    {key:'async_flow',label:'Async Flow',cls:'async'},
+  ];
+  let ovHTML=`<div class="overview-strategy">${ov.strategy||data.scale_analysis||'—'}</div><div class="flows-grid">`;
+  let flowCount=0;
+  flowDefs.forEach(f=>{
+    const val=ov[f.key];
+    if(val&&!val.startsWith('N/A')){
+      const isAlone=flowCount===0&&flowDefs.filter(x=>ov[x.key]&&!ov[x.key].startsWith('N/A')).length===1;
+      ovHTML+=`<div class="flow-item ${f.cls}${isAlone?' full':''}"><div class="flow-label">${f.label}</div><div class="flow-text">${val}</div></div>`;
+      flowCount++;
+    }
+  });
+  if(flowCount===0) ovHTML+=`<div class="flow-item full read"><div class="flow-label">Read Flow</div><div class="flow-text">${ov.read_flow||'—'}</div></div>`;
+  ovHTML+='</div>';
+  document.getElementById('overview-card').innerHTML=ovHTML;
+  document.getElementById('scale-analysis-text').textContent=data.scale_analysis||'—';
+
+  /* ── LEFT SIDEBAR: SERVICES ── */
+  const svcEl=document.getElementById('sidebar-services');
+  svcEl.innerHTML='';
+  svcs.forEach(svc=>{
+    const d=document.createElement('div');
+    d.className='svc-item';
+    d.innerHTML=`
+      <div class="svc-head"><span class="svc-icon">${getServiceIcon(svc.name)}</span><span class="svc-name">${svc.name}</span></div>
+      <div class="svc-role">${svc.role||''}</div>
+      <div class="svc-just">${svc.justification||''}</div>
+      ${svc.estimated_monthly_cost?`<div class="svc-cost-tag">💰 ${svc.estimated_monthly_cost}</div>`:''}`;
+    svcEl.appendChild(d);
+  });
+
+  /* ── LEFT SIDEBAR: IMPL ── */
+  const implEl=document.getElementById('sidebar-impl');
+  implEl.innerHTML='';
+  (data.implementation_steps||[]).forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='impl-item';
+    const tasks=(s.tasks||[]).map(t=>`<li>${t}</li>`).join('');
+    d.innerHTML=`
+      <div class="impl-item-head">
+        <div class="impl-num">${i+1}</div>
+        <div class="impl-phase-name">${(s.phase||'').replace(/Phase \d+ — /,'')}</div>
+        <div class="impl-dur-tag">${s.duration||''}</div>
+      </div>
+      <ul class="impl-tasks">${tasks}</ul>`;
+    implEl.appendChild(d);
+  });
+
+  /* ── RIGHT SIDEBAR: COST ── */
+  const perSvc=cb.per_service||[];
+  const maxCostNum=perSvc.reduce((m,s)=>Math.max(m,parseCostNum(s.cost)),500);
+  const costColors=['var(--cyan)','#80aaff','var(--magenta)','var(--gold)','#7ddd9a','#b0b0ff','#ffaa30','#ff80cc'];
+  let costHTML=`<div class="cost-total">${cb.monthly_estimate||'—'}</div>
+    <div class="cost-sub">estimated / month</div>`;
+  perSvc.forEach((s,i)=>{
+    const v=parseCostNum(s.cost);
+    const pct=Math.max(4,Math.min((v/maxCostNum)*100,100));
+    costHTML+=`<div class="cost-row">
+      <div class="cost-name" title="${s.service}">${s.service}</div>
+      <div class="cost-bar-wrap"><div class="cost-bar-fill" style="width:0%;background:${costColors[i%costColors.length]}" data-pct="${pct}"></div></div>
+      <div class="cost-val">${s.cost}</div>
+    </div>`;
+  });
+  if(cb.cost_notes) costHTML+=`<div class="cost-note">💡 ${cb.cost_notes}</div>`;
+  document.getElementById('cost-sidebar').innerHTML=costHTML;
+
+  /* ── ANIMATE COST BARS ── */
+  setTimeout(()=>{
+    document.querySelectorAll('.cost-bar-fill[data-pct]').forEach(bar=>{
+      bar.style.width=bar.dataset.pct+'%';
+    });
+  },700);
+}
+
+/* INIT */
+document.addEventListener('DOMContentLoaded',()=>{
+  const raw=sessionStorage.getItem('architectureData');
+  if(!raw){
+    document.getElementById('no-data-state').style.display='flex';
+    document.getElementById('main-layout').style.display='none';
+    return;
+  }
+  let data;
+  try{data=JSON.parse(raw);}catch(e){
+    document.getElementById('no-data-state').style.display='flex';
+    return;
+  }
+  document.getElementById('no-data-state').style.display='none';
+  document.getElementById('main-layout').style.display='grid';
+  renderPage(data);
+});
+</script>
+</body>
+</html>
