@@ -11,7 +11,7 @@
 
 ---
 (Note:This is a personal version of the project that i will be maintaining and updating.
-The original hackathon repo is linked here: [Original repository](https://github.com/Adrish-alias/Architect_Ai)
+The original hackathon repo is linked here: [Original repository](https://github.com/Adrish-alias/Architect_Ai))
 ## 🚀 Overview
 
 **ArchitectAI** is a sophisticated generative AI agent designed to act as your automated Solutions Architect. It bridges the gap between high-level business goals and technical cloud implementations by transforming natural language descriptions into a comprehensive, multi-tiered AWS architecture.
