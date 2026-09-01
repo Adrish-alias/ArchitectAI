@@ -5,33 +5,35 @@
   <img src="https://img.shields.io/badge/Made_with-React_Flow-FF007F.svg" alt="React Flow">
   
   <h1>🌟 ArchitectAI 🌟</h1>
-  <h3>Multi-LLM Cloud Infrastructure Agent</h3>
-  <p>Transforming natural language requirements into production-ready AWS architectures.</p>
+  <h3>RAG-Grounded Multi-LLM Cloud Infrastructure Agent</h3>
+  <p>Transforming natural language requirements into production-ready, grounded AWS architectures.</p>
 </div>
 
 ---
-(Note:This is a personal version of the project that i will be maintaining and updating.
-The original hackathon repo is linked here: [Original repository](https://github.com/Adrish-alias/Architect_Ai))
+*(Note: This is an active personal maintenance repository. The original hackathon repository is linked here: [Original Repository](https://github.com/Adrish-alias/Architect_Ai))*
+
 ## 🚀 Overview
 
-**ArchitectAI** is a sophisticated generative AI agent designed to act as your automated Solutions Architect. It bridges the gap between high-level business goals and technical cloud implementations by transforming natural language descriptions into a comprehensive, multi-tiered AWS architecture.
+**ArchitectAI** is a generative AI assistant designed to act as your automated Solutions Architect. It bridges the gap between high-level business goals and technical cloud implementations by transforming natural language descriptions into comprehensive, multi-tiered AWS architectures grounded in real-world AWS Reference Architectures.
 
 ### 💡 Why ArchitectAI?
-Designing enterprise-grade cloud infrastructure traditionally requires deep domain expertise and days of manual diagrams. ArchitectAI delivers:
-- **Instant Productivity**: Move from idea to architecture in seconds.
-- **Expert Guidance**: Built-in best practices for cost, performance, and security.
-- **Live Interaction**: Edit and pivot your design in real-time, not in a static image.
-- **Deep Auditing**: Automatically detect anti-patterns before they become costly mistakes.
+Designing enterprise-grade cloud infrastructure traditionally requires deep domain expertise and manual diagramming. ArchitectAI delivers:
+- **Instant Productivity**: Move from idea to full architecture in seconds.
+- **RAG Reference Grounding**: Ground decisions in curated AWS Reference Architectures via local vector search.
+- **Traceable Architectural Decisions**: Clear distinction between `RETRIEVED_GROUNDED` decisions (with verified source reference IDs) and model-derived decisions.
+- **Automated Consistency Validation**: Built-in self-healing validator loop that catches graph inconsistencies and un-triggered queue connections before deployment.
+- **Live React Flow Interaction**: Trace, zoom, and inspect your infrastructure graph in real-time.
+- **Deep Auditing**: Automatically detect anti-patterns and over-provisioned services before deployment.
 
 ---
 
-## ✨ Key Features & Application Visuals
+## ✨ Key Features & Visuals
 
-### 1. AI-Powered Requirement Classification
+### 1. Requirement Classification & Infrastructure Tiering
 <p align="center">
   <img src="assets/generator-input.png" alt="Project Input and Tiered Generation" width="900"/>
 </p>
-Simply input your project idea, user scale, budget, and key features. ArchitectAI's agentic workflow intelligently classifies your requirements to instantly provision three distinct infrastructure tiers: Cost-Optimized, Balanced, and High-Performance. 
+Input your project idea, user scale, budget, and key features. ArchitectAI intelligently classifies your requirements to provision three distinct infrastructure tiers: **Cost-Optimized**, **Balanced**, and **High-Performance**.
 
 ### 2. Deep Architecture Analysis & Error Detection
 <p align="center">
@@ -40,31 +42,33 @@ Simply input your project idea, user scale, budget, and key features. ArchitectA
 <p align="center">
   <img src="assets/analyser-issues.png" alt="Architecture Issue Details" width="900"/>
 </p>
-The intelligent Analyser actively audits your existing architecture. It visually tags nodes directly on the graph and extracts detailed recommendations—such as detecting over-provisioned services (Cost Issues), missing service discovery, and architectural anti-patterns (e.g., direct DB access).
+The intelligent Analyser actively audits existing architectures. It visually tags nodes on the graph and extracts actionable recommendations—such as detecting over-provisioned services (Cost Issues), missing service discovery, and architectural anti-patterns.
 
 ### 3. Interactive React Flow Diagrams
 <p align="center">
   <img src="assets/architecture-diagram.png" alt="Interactive React Flow Diagram" width="900"/>
 </p>
-Experience your cloud infrastructure through fully interactive, zoomable, and editable node-based graphs. Powered by React Flow, trace exactly how components like Amazon Cognito, API Gateway, and ECS Fargate securely connect.
+Experience your cloud infrastructure through fully interactive, zoomable, and editable node-based graphs. Trace component connections between Amazon Cognito, API Gateway, AWS Lambda, ECS Fargate, and DynamoDB.
 
-### 4. Granular Cost Estimation & Planning
+### 4. Cost Estimation & Implementation Planning
 <p align="center">
   <img src="assets/cost-analysis.png" alt="Cost Analysis and Implementation Plan" width="900"/>
 </p>
-Get precise monthly and annual financial projections calibrated dynamically to your workload size. Break down expenditures service-by-service and receive a phase-by-phase Implementation Roadmap to safely guide your deployment.
+Get monthly and annual financial projections calibrated to your workload size. Break down expenditures service-by-service and receive a phase-by-phase Implementation Roadmap to guide deployment.
 
 ---
 
-## 🧠 The Dual-LLM Pipeline 
+## 🧠 The Multi-LLM & RAG Pipeline
 
-ArchitectAI relies on a pioneering **Multi-LLM orchestration** strategy to maximize accuracy, syntactically correct layouts, and logical reasoning.
+ArchitectAI relies on a multi-stage **Local RAG & Multi-LLM orchestration** strategy:
 
-1. **Requirement Classification (Meta Llama 3-70B)**: Employs large context analysis to map out Scale, Compute Intensity, Data Complexity, and Real-Time operational needs.
-2. **Service Mapping (Meta Llama 3-70B)**: Maps the refined requirements directly to optimal AWS services (e.g., matching ECS over Lambda, or DynamoDB over RDS).
-3. **Drafting Assembly**: Structures logical JSON graphs connecting services dynamically.
-4. **Syntax Healing (Google Gemini 2.5 Flash)**: Executes error-recovery parsing to fix malformed layouts, ensuring pristine React Flow structures.
-5. **Architectural Review (Google Gemini 2.5 Flash)**: Final pass "Senior Review" to sanity check component flows, security boundaries, and projected costs.
+1. **Requirement Classification (Meta Llama 3-70B)**: Maps scale, compute intensity, data complexity, and real-time operational needs.
+2. **Local Vector RAG Retrieval (`all-MiniLM-L6-v2`)**: Searches local vector index for relevant AWS Reference Architectures based on requirement profiles and coverage scoring.
+3. **Reference Analysis & Decision Grounding**: Evaluates matched patterns, extracts architectural decisions, and determines Grounding Strength (`STRONG` / `MODERATE`).
+4. **Guardrail Service Selection (Meta Llama 3-70B)**: Maps requirements and reference evidence to optimal AWS services without rigid hardcoded overrides.
+5. **JSON Assembly & Mermaid Diagram Generation**: Builds structured architecture JSON and converts components into clean Mermaid graph representations.
+6. **Consistency Validation & Self-Healing Loop**: Runs an automated 2-attempt LLM correction retry loop to resolve graph or queue connection inconsistencies.
+7. **Senior Architectural Pass (Google Gemini 2.5 Flash)**: Final pass to sanity-check security boundaries, data flows, and cost estimates.
 
 ---
 
@@ -73,8 +77,9 @@ ArchitectAI relies on a pioneering **Multi-LLM orchestration** strategy to maxim
 | Domain | Technologies |
 | :--- | :--- |
 | **Frontend** | React 19, Vite, React Flow, React Router DOM, Vanilla CSS |
-| **Backend** | Node.js, Express.js |
-| **AI / Models** | Amazon Bedrock (Meta Llama 3-70B), Google Gemini 2.5 Flash |
+| **Backend** | Node.js, Express.js (Modular Architecture) |
+| **Local RAG & Embeddings** | `@xenova/transformers` (`all-MiniLM-L6-v2`), ONNX Runtime WASM, Local Vector Store |
+| **AI / LLMs** | Amazon Bedrock (Meta Llama 3-70B), Google Gemini 2.5 Flash |
 
 ---
 
@@ -82,26 +87,30 @@ ArchitectAI relies on a pioneering **Multi-LLM orchestration** strategy to maxim
 
 ```text
 ArchitectAI/
-├── backend/                  # Express.js Server & LLM Orchestration
-│   ├── .env                  # Secrets (Bedrock & Gemini Keys)
-│   ├── .env.example          # Environment variables template
-│   ├── package.json          # Server dependencies & scripts
-│   └── src/                  # Modular backend codebase
-│       ├── server.js         # Entry point (app listener)
-│       ├── app.js            # Express app configuration & routes
-│       ├── routes/           # Architecture & Analysis API endpoints
-│       ├── controllers/      # HTTP request handling
-│       ├── services/         # Generation, Analysis, LLM, Mermaid & JSON services
-│       └── prompts/          # Pipeline LLM prompts
-
-├── frontend/                 # Client-side codebase
+├── backend/                              # Express.js Server & LLM Orchestration
+│   ├── .env                              # Environment variables (Bedrock & Gemini Keys)
+│   ├── .env.example                      # Environment variables template
+│   ├── package.json                      # Server dependencies & scripts
+│   ├── data/                             # Knowledge base records & persistent RAG index
+│   ├── scripts/                          # RAG indexing, testing & evaluation utilities
+│   └── src/                              # Modular backend codebase
+│       ├── server.js                     # HTTP server entry point
+│       ├── app.js                        # Express app configuration & middleware
+│       ├── routes/                       # Architecture & Analysis API endpoints
+│       ├── controllers/                  # HTTP request handling
+│       ├── services/                     # Generation, Analysis, Validator, LLM & Mermaid services
+│       ├── rag/                          # Local RAG engine (embedder, loader, retrieval, reference-analyzer)
+│       ├── config/                       # Environment configuration & RAG thresholds
+│       └── prompts/                      # Multi-LLM prompt templates
+│
+├── frontend/                             # React Client-side Application
 │   └── react-app/
-│       ├── src/              # React components & React Flow hooks
-│       ├── public/           # Static assets
-│       ├── index.html        # App entry point
-│       └── vite.config.js    # Vite configuration
-├── assets/                   # Application screenshots & Media
-└── README.md                 # Project documentation
+│       ├── src/                          # React components & React Flow hooks
+│       ├── public/                       # Static assets
+│       ├── index.html                    # App entry point
+│       └── vite.config.js                # Vite configuration
+├── assets/                               # Application screenshots
+└── README.md                             # Project documentation
 ```
 
 ---
@@ -111,27 +120,34 @@ ArchitectAI/
 Follow these instructions to get ArchitectAI running in your local environment.
 
 ### 1. Prerequisites
-Ensure you have Node.js installed, then create a `.env` file in the `backend` directory containing your API credentials:
+Ensure you have Node.js installed, then create a `.env` file in the `backend` directory containing your credentials:
 ```env
 GEMINI_API_KEY=your_gemini_key_here
 AWS_BEARER_TOKEN_BEDROCK=your_bedrock_token_here
+RAG_ENABLED=true
+RAG_RELEVANCE_THRESHOLD=0.45
 ```
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/Adrish-alias/ArchitectAI.git
-cd ArchitectAI
+git clone https://github.com/Adrish-alias/Architect-AI.git
+cd Architect-AI
 ```
 
-### 3. Start the Backend Server
+### 3. Build Vector Index & Start Backend Server
 ```bash
 cd backend
 npm install
+
+# Build/verify the local RAG vector index
+npm run rag:index
+
+# Start backend server
 npm start
 ```
 
 ### 4. Start the Frontend App
-Open a new terminal window/tab:
+Open a new terminal window:
 ```bash
 cd frontend/react-app
 npm install
@@ -144,8 +160,8 @@ The application will launch on your local host (usually `http://localhost:5173`)
 
 ## 🔮 Future Roadmap
 
-- [ ] **Infrastructure as Code (IaC) Export**: One-click generation of production-ready Terraform modules and AWS CDK scripts.
-- [ ] **Live Price Aggregation**: Integration with the official AWS Pricing API for dynamically shifting, region-specific cost insights.
+- [ ] **Infrastructure as Code (IaC) Export**: One-click generation of production-ready Terraform modules and AWS CDK constructs.
+- [ ] **Live Price Aggregation**: Integration with the official AWS Pricing API for dynamically shifting cost insights.
 - [ ] **Multi-Cloud Equivalency**: Expanded ontology maps to generate matching Google Cloud Platform (GCP) and Microsoft Azure layouts.
 - [ ] **Security Auditing**: Strict compliance scanning against the AWS Well-Architected Framework guidelines.
 
