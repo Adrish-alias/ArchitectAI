@@ -19,6 +19,7 @@ const { loadIndex }                            = require("./vector-store");
 const { retrieveArchitectures, attachRecords } = require("./retrieval");
 const { buildRetrievalQuery }                  = require("./query-builder");
 const { analyzeRequirements }                  = require("./requirement-analyzer");
+const { analyzeReferences }                    = require("./reference-analyzer");
 
 // Control debug logging
 const RAG_DEBUG = process.env.RAG_DEBUG === "true";
@@ -46,9 +47,10 @@ async function initRag() {
  *  2. Build domain-rich natural-language retrieval query from profile.
  *  3. Embed query and search vector index.
  *  4. Apply metadata requirement coverage, category scoring, and diversity filter.
+ *  5. Run Reference Analysis to produce explicit Requirement → Reference → Design Decision mapping.
  *
- * Fallback: If ANY component fails (profile analyzer, embedder, index), returns null,
- * allowing Step 2 to continue using original ungrounded logic.
+ * Fallback: If ANY component fails, returns null, allowing Step 2 to continue
+ * using original ungrounded logic.
  */
 async function ragRetrieve({ idea, users, budget, features, tier, classificationText, topK = 3 }) {
   try {
@@ -88,7 +90,22 @@ async function ragRetrieve({ idea, users, budget, features, tier, classification
       );
     }
 
-    return results;
+    // Step 1.8: Perform Reference Analysis & Design Decision Grounding
+    let referenceAnalysis = null;
+    try {
+      referenceAnalysis = analyzeReferences({ profile, ragResults: results });
+      if (RAG_DEBUG && referenceAnalysis) {
+        console.log("[RAG] REFERENCE ANALYSIS & DESIGN DECISIONS:\n", JSON.stringify(referenceAnalysis, null, 2));
+      }
+    } catch (e) {
+      console.warn("[RAG] Reference analyzer failed — using raw retrieval results:", e.message);
+    }
+
+    return {
+      results,
+      profile,
+      referenceAnalysis
+    };
   } catch (err) {
     console.error("[RAG] Retrieval failed (pipeline will continue without RAG):", err.message);
     return null;
@@ -96,4 +113,5 @@ async function ragRetrieve({ idea, users, budget, features, tier, classification
 }
 
 module.exports = { initRag, ragRetrieve };
+
 

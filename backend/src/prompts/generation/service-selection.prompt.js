@@ -123,14 +123,17 @@ IF features include payments:
 OUTPUT FORMAT — plain text:
 
 ## Architecture Strategy
-<2-4 sentences of rationale specific to THIS project AND this tier>
+<2-4 sentences of rationale specific to THIS project AND this tier, explicitly addressing tenant isolation, security, and scaling strategy>
+
+## Architectural Decisions & Grounding
+- [Requirement]: <specific requirement e.g. multi-tenant data isolation> -> Grounded Pattern: <pattern/decision from reference or baseline> -> Implementation: <how selected services implement it>
 
 ## Selected AWS Services
 (repeat the block below for each service, no numbering)
 
 SERVICE: <exact AWS service name>
-ROLE: <specific technical role in this system>
-JUSTIFICATION: <which feature or scale requirement forces inclusion>
+ROLE: <specific technical role in this system, including architectural pattern details like tenant-scoped partitioning or JWT claims>
+JUSTIFICATION: <which feature, scale, or reference pattern forces inclusion>
 DATA_FLOW: <one sentence: what enters and what leaves>
 ${TIER_STEP2[archTier]}
 `;
@@ -138,10 +141,12 @@ ${TIER_STEP2[archTier]}
 
 /**
  * Build the Step 2 user prompt.
- * @param {{ analysis: string, idea: string, features?: string[], users: string, budget?: string, ragResults?: Array }} params
+ * @param {{ analysis: string, idea: string, features?: string[], users: string, budget?: string, ragData?: Object|Array, ragResults?: Object|Array }} params
  * @returns {string}
  */
-function buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragResults }) {
+function buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragData, ragResults }) {
+  const ragInput = ragData || ragResults;
+
   let prompt = `
 Classification:
 ${analysis}
@@ -153,87 +158,79 @@ Users: ${users}
 Budget: ${budget || "not specified"}
 `;
 
-  // ─── Phase 11: RAG Context Injection ─────────────────────────────────────
-  if (ragResults && ragResults.length > 0) {
-    prompt += buildRagContextBlock(ragResults);
+  if (ragInput) {
+    prompt += buildRagContextBlock(ragInput);
   }
 
   return prompt;
 }
 
 /**
- * Build the <aws_reference_architectures> injection block from RAG results.
+ * Build the <aws_reference_architectures> injection block from RAG results & Reference Analysis.
  *
- * @param {Array<{architecture: Object, semanticScore: number, finalScore: number}>} ragResults
+ * @param {Object|Array} ragInput
  * @returns {string}
  */
-function buildRagContextBlock(ragResults) {
-  const refs = ragResults.map((result, i) => {
+function buildRagContextBlock(ragInput) {
+  const results  = Array.isArray(ragInput) ? ragInput : (ragInput.results || []);
+  const analysis = !Array.isArray(ragInput) ? (ragInput.referenceAnalysis || null) : null;
+
+  if (results.length === 0) return "";
+
+  const groundingHeader = analysis
+    ? `Grounding Strength: ${analysis.groundingStrength} (Top finalScore: ${analysis.topScore?.toFixed(3)} vs threshold ${analysis.relevanceThreshold})`
+    : "Grounding Strength: MODERATE";
+
+  const refsBlock = results.map((result, i) => {
     const arch = result.architecture;
+    const refAnalysis = analysis?.referenceAnalyses?.[i] || null;
 
     const services = (arch.services || [])
       .map(s => `  - ${s.name}: ${s.role || ""}`)
       .join("\n");
 
-    const components = (arch.components || [])
-      .map(c => `  - ${c.name} (${c.type}): ${(c.services || []).join(", ")}`)
-      .join("\n");
+    const matchedReqs = refAnalysis && refAnalysis.matchedRequirements.length > 0
+      ? refAnalysis.matchedRequirements.map(m => `  - ${m}`).join("\n")
+      : (arch.requirements_signals || []).map(r => `  - ${r}`).join("\n");
 
-    const connections = (arch.connections || []).slice(0, 6)
-      .map(c => `  - ${c.from} → ${c.to}: ${c.description || c.relationship}`)
-      .join("\n");
-
-    const characteristics = (arch.architecture_characteristics || []).join(", ");
-    const strengths       = (arch.strengths   || []).join("; ");
-    const tradeoffs       = (arch.tradeoffs   || []).join("; ");
-    const constraints     = (arch.constraints || []).join("; ");
-    const requirements    = (arch.requirements_signals || []).join(", ");
-
-    const source = arch.source
-      ? `${arch.source.provider || ""} — ${arch.source.document_title || ""}`.trim().replace(/^—\s*/, "")
-      : "AWS Reference Architecture";
+    const decisions = refAnalysis && refAnalysis.designDecisionsToConsider.length > 0
+      ? refAnalysis.designDecisionsToConsider.map(d => `  - ${d}`).join("\n")
+      : "  - Adapt general service architecture patterns as needed";
 
     return `
---- Reference ${i + 1} ---
-Name: ${arch.name}
+--- Reference ${i + 1}: ${arch.name} ---
 ID: ${arch.id}
 Category: ${arch.category}
-Relevance score: ${result.finalScore.toFixed(3)}
+Relevance Score: ${result.finalScore.toFixed(3)}
+Relevance Level: ${refAnalysis?.relevanceLevel?.toUpperCase() || "MODERATE"}
 
-Description:
-${arch.description || ""}
+Matched Requirements:
+${matchedReqs}
 
-Requirements signals:
-${requirements}
+Architectural Decisions to Consider:
+${decisions}
 
-AWS Services:
+Relevant AWS Services & Roles:
 ${services}
 
-Components:
-${components}
-
-Connections (sample):
-${connections || "  (none listed)"}
-
-Architecture characteristics:
-${characteristics}
-
-Strengths: ${strengths}
-Tradeoffs: ${tradeoffs}
-Constraints: ${constraints || "none"}
-
-Source: ${source}
+Characteristics: ${(arch.architecture_characteristics || []).join(", ")}
+Tradeoffs: ${(arch.tradeoffs || []).join("; ")}
 `;
   }).join("\n");
 
   return `
 
 <aws_reference_architectures>
-The following AWS reference architectures are retrieved from the Architect AI knowledge base.
-Use them as grounded architectural references. They are not mandatory templates.
-Adapt or combine patterns when appropriate to satisfy the user's requirements.
-Do not claim that an AWS reference contains a service or connection unless it is explicitly listed below.
-${refs}
+${groundingHeader}
+
+Retrieved Reference Architectures & Grounded Design Decisions:
+${refsBlock}
+
+INSTRUCTIONS FOR ADOPTING ARCHITECTURAL DECISIONS:
+1. Retrieved references are architectural evidence. Use them to inform architectural decisions when relevant.
+2. Do not blindly copy service names. Do not add a service solely because it appears in a reference.
+3. For each primary requirement (especially multi-tenancy, data isolation, real-time updates), explicitly adopt and document a grounded architectural decision from the reference in ## Architectural Decisions & Grounding.
+4. Ensure selected service roles explicitly describe their architectural pattern (e.g. "Amazon Cognito: SaaS identity provider issuing JWTs with tenant_id claim", "Amazon DynamoDB: Primary database using partition key tenant_id#user_id for data isolation").
 </aws_reference_architectures>
 `;
 }
@@ -243,4 +240,5 @@ module.exports = {
   buildServiceSelectionSystemPrompt,
   buildServiceSelectionUserPrompt
 };
+
 
