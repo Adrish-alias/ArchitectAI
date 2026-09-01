@@ -1,0 +1,284 @@
+{
+  "corpus_name": "Architect AI AWS Architecture Knowledge Base",
+  "provider": "AWS",
+  "record_count": 16,
+  "source_documents": [
+    {
+      "filename": "web-application-architecture.pdf",
+      "title": "Web Application Architecture on AWS",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-001"
+      ]
+    },
+    {
+      "filename": "web-application-hosting-best-practices.pdf",
+      "title": "Web Application Hosting in the AWS Cloud",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-001"
+      ]
+    },
+    {
+      "filename": "serverless-multi-tier-architectures-api-gateway-lambda.pdf",
+      "title": "AWS Serverless Multi-Tier Architectures with Amazon API Gateway and AWS Lambda",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-002",
+        "aws-architecture-003"
+      ]
+    },
+    {
+      "filename": "microservices-on-aws.pdf",
+      "title": "Implementing Microservices on AWS",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-004",
+        "aws-architecture-005",
+        "aws-architecture-015",
+        "aws-architecture-016"
+      ]
+    },
+    {
+      "filename": "wellarchitected-saas-lens.pdf",
+      "title": "SaaS Lens",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-006",
+        "aws-architecture-007",
+        "aws-architecture-008"
+      ]
+    },
+    {
+      "filename": "security-reference-architecture.pdf",
+      "title": "AWS Security Reference Architecture (AWS SRA) - core architecture",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-009"
+      ]
+    },
+    {
+      "filename": "data-lakes-on-aws.pdf",
+      "title": "Guidance for Data Lakes on AWS",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-010",
+        "aws-architecture-011"
+      ]
+    },
+    {
+      "filename": "web-store-on-aws.pdf",
+      "title": "Guidance for Web Store on AWS",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-012"
+      ]
+    },
+    {
+      "filename": "serverless-in-game-screenshot-processor-pipeline-game-studios.pdf",
+      "title": "Serverless In-Game Screenshot Processor Pipeline for Game Studios",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-013"
+      ]
+    },
+    {
+      "filename": "multi-region-api-gateway-with-cloudfront.pdf",
+      "title": "Multi-region API Gateway with CloudFront",
+      "processed": true,
+      "contributed_records": [
+        "aws-architecture-014"
+      ]
+    }
+  ],
+  "records": [
+    {
+      "id": "aws-architecture-001",
+      "name": "Classic Highly Available Web Application",
+      "source_documents": [
+        "web-application-architecture.pdf",
+        "web-application-hosting-best-practices.pdf"
+      ],
+      "page_numbers": [
+        1
+      ]
+    },
+    {
+      "id": "aws-architecture-002",
+      "name": "Serverless Single-Page Application (SPA)",
+      "source_documents": [
+        "serverless-multi-tier-architectures-api-gateway-lambda.pdf"
+      ],
+      "page_numbers": [
+        19,
+        20
+      ]
+    },
+    {
+      "id": "aws-architecture-003",
+      "name": "Serverless Mobile Backend",
+      "source_documents": [
+        "serverless-multi-tier-architectures-api-gateway-lambda.pdf"
+      ],
+      "page_numbers": [
+        18
+      ]
+    },
+    {
+      "id": "aws-architecture-004",
+      "name": "Serverless Microservices with AWS Fargate",
+      "source_documents": [
+        "microservices-on-aws.pdf"
+      ],
+      "page_numbers": [
+        12
+      ]
+    },
+    {
+      "id": "aws-architecture-005",
+      "name": "Event Sourcing Pattern on AWS",
+      "source_documents": [
+        "microservices-on-aws.pdf"
+      ],
+      "page_numbers": [
+        17,
+        18
+      ]
+    },
+    {
+      "id": "aws-architecture-006",
+      "name": "Serverless SaaS Architecture",
+      "source_documents": [
+        "wellarchitected-saas-lens.pdf"
+      ],
+      "page_numbers": [
+        11,
+        12
+      ]
+    },
+    {
+      "id": "aws-architecture-007",
+      "name": "Amazon EKS SaaS Architecture",
+      "source_documents": [
+        "wellarchitected-saas-lens.pdf"
+      ],
+      "page_numbers": [
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "id": "aws-architecture-008",
+      "name": "Full Stack (Silo) Isolation SaaS",
+      "source_documents": [
+        "wellarchitected-saas-lens.pdf"
+      ],
+      "page_numbers": [
+        19,
+        20,
+        21,
+        22
+      ]
+    },
+    {
+      "id": "aws-architecture-009",
+      "name": "AWS Security Reference Architecture (SRA) - Core Multi-Account",
+      "source_documents": [
+        "security-reference-architecture.pdf"
+      ],
+      "page_numbers": [
+        23,
+        24,
+        25,
+        35,
+        36,
+        47,
+        82,
+        88
+      ]
+    },
+    {
+      "id": "aws-architecture-010",
+      "name": "Serverless Data Lake Framework",
+      "source_documents": [
+        "data-lakes-on-aws.pdf"
+      ],
+      "page_numbers": [
+        1
+      ]
+    },
+    {
+      "id": "aws-architecture-011",
+      "name": "Multi-Source Analytics Lakehouse with AI-Powered Insights",
+      "source_documents": [
+        "data-lakes-on-aws.pdf"
+      ],
+      "page_numbers": [
+        2
+      ]
+    },
+    {
+      "id": "aws-architecture-012",
+      "name": "Ecommerce Web Application Architecture",
+      "source_documents": [
+        "web-store-on-aws.pdf"
+      ],
+      "page_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "aws-architecture-013",
+      "name": "Serverless In-Game Screenshot Processing Pipeline",
+      "source_documents": [
+        "serverless-in-game-screenshot-processor-pipeline-game-studios.pdf"
+      ],
+      "page_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "aws-architecture-014",
+      "name": "Multi-Region API Gateway with CloudFront Architecture",
+      "source_documents": [
+        "multi-region-api-gateway-with-cloudfront.pdf"
+      ],
+      "page_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "aws-architecture-015",
+      "name": "Saga Execution Coordinator Pattern",
+      "source_documents": [
+        "microservices-on-aws.pdf"
+      ],
+      "page_numbers": [
+        17,
+        23,
+        24,
+        25
+      ]
+    },
+    {
+      "id": "aws-architecture-016",
+      "name": "Message Bus (Publish-Subscribe) Pattern",
+      "source_documents": [
+        "microservices-on-aws.pdf"
+      ],
+      "page_numbers": [
+        22
+      ]
+    }
+  ],
+  "notes": [
+    "Converted from Gemini's extracted Markdown output into machine-readable files.",
+    "No substantive architecture claims were intentionally added or removed during conversion.",
+    "The supplied Gemini output identifies 9 source PDF filenames; the original 10-PDF corpus cannot be independently verified from this output alone."
+  ]
+}

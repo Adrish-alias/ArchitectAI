@@ -138,11 +138,11 @@ ${TIER_STEP2[archTier]}
 
 /**
  * Build the Step 2 user prompt.
- * @param {{ analysis: string, idea: string, features?: string[], users: string, budget?: string }} params
+ * @param {{ analysis: string, idea: string, features?: string[], users: string, budget?: string, ragResults?: Array }} params
  * @returns {string}
  */
-function buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget }) {
-  return `
+function buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragResults }) {
+  let prompt = `
 Classification:
 ${analysis}
 
@@ -152,6 +152,90 @@ Features: ${(features || []).join(", ") || "none specified"}
 Users: ${users}
 Budget: ${budget || "not specified"}
 `;
+
+  // ─── Phase 11: RAG Context Injection ─────────────────────────────────────
+  if (ragResults && ragResults.length > 0) {
+    prompt += buildRagContextBlock(ragResults);
+  }
+
+  return prompt;
+}
+
+/**
+ * Build the <aws_reference_architectures> injection block from RAG results.
+ *
+ * @param {Array<{architecture: Object, semanticScore: number, finalScore: number}>} ragResults
+ * @returns {string}
+ */
+function buildRagContextBlock(ragResults) {
+  const refs = ragResults.map((result, i) => {
+    const arch = result.architecture;
+
+    const services = (arch.services || [])
+      .map(s => `  - ${s.name}: ${s.role || ""}`)
+      .join("\n");
+
+    const components = (arch.components || [])
+      .map(c => `  - ${c.name} (${c.type}): ${(c.services || []).join(", ")}`)
+      .join("\n");
+
+    const connections = (arch.connections || []).slice(0, 6)
+      .map(c => `  - ${c.from} → ${c.to}: ${c.description || c.relationship}`)
+      .join("\n");
+
+    const characteristics = (arch.architecture_characteristics || []).join(", ");
+    const strengths       = (arch.strengths   || []).join("; ");
+    const tradeoffs       = (arch.tradeoffs   || []).join("; ");
+    const constraints     = (arch.constraints || []).join("; ");
+    const requirements    = (arch.requirements_signals || []).join(", ");
+
+    const source = arch.source
+      ? `${arch.source.provider || ""} — ${arch.source.document_title || ""}`.trim().replace(/^—\s*/, "")
+      : "AWS Reference Architecture";
+
+    return `
+--- Reference ${i + 1} ---
+Name: ${arch.name}
+ID: ${arch.id}
+Category: ${arch.category}
+Relevance score: ${result.finalScore.toFixed(3)}
+
+Description:
+${arch.description || ""}
+
+Requirements signals:
+${requirements}
+
+AWS Services:
+${services}
+
+Components:
+${components}
+
+Connections (sample):
+${connections || "  (none listed)"}
+
+Architecture characteristics:
+${characteristics}
+
+Strengths: ${strengths}
+Tradeoffs: ${tradeoffs}
+Constraints: ${constraints || "none"}
+
+Source: ${source}
+`;
+  }).join("\n");
+
+  return `
+
+<aws_reference_architectures>
+The following AWS reference architectures are retrieved from the Architect AI knowledge base.
+Use them as grounded architectural references. They are not mandatory templates.
+Adapt or combine patterns when appropriate to satisfy the user's requirements.
+Do not claim that an AWS reference contains a service or connection unless it is explicitly listed below.
+${refs}
+</aws_reference_architectures>
+`;
 }
 
 module.exports = {
@@ -159,3 +243,4 @@ module.exports = {
   buildServiceSelectionSystemPrompt,
   buildServiceSelectionUserPrompt
 };
+

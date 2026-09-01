@@ -1,3 +1,6 @@
 .env
 *.env
 node_modules/
+
+# RAG — generated vector index (regenerate with: npm run rag:index)
+data/rag-index/

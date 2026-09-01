@@ -2,6 +2,7 @@ const { callLlama } = require("./llama.service");
 const { refineArchitecture } = require("./gemini.service");
 const { safeParse, attemptJsonRecovery } = require("./json.service");
 const { buildArchitectureMermaid, sanitizeMermaid } = require("./mermaid.service");
+const { ragRetrieve } = require("../rag/rag-service");
 const {
   buildClassificationSystemPrompt,
   buildClassificationUserPrompt
@@ -18,6 +19,7 @@ const {
   step4System,
   buildMermaidValidationUserPrompt
 } = require("../prompts/generation/mermaid-validation.prompt");
+
 
 /**
  * Run the full 5-step architecture generation pipeline.
@@ -36,9 +38,22 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   const analysis = await callLlama(step1System, step1User, 300);
   console.log("STEP 1:\n", analysis);
 
+  // ─── RAG RETRIEVAL ────────────────────────────────────────────────────────
+  // Retrieve top-3 relevant AWS reference architectures from the knowledge base.
+  // Phase 12 fallback: ragRetrieve() catches all internal errors and returns null,
+  // so a RAG failure will never propagate to /generate callers.
+  const ragResults = await ragRetrieve({
+    idea,
+    users,
+    budget,
+    features,
+    classificationText: analysis
+  });
+
   // ─── STEP 2: Service Selection ───────────────────────────────────────────
   const step2System = buildServiceSelectionSystemPrompt({ tier: archTier });
-  const step2User   = buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget });
+  const step2User   = buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragResults });
+
 
   const serviceStack = await callLlama(step2System, step2User, 1500);
   console.log("STEP 2:\n", serviceStack);
