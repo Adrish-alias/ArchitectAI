@@ -13,26 +13,18 @@
  *   ragRetrieve(params) → called between Step 1 and Step 2
  */
 
-const { loadArchitectureRecords }      = require("./loader");
-const { embedText }                    = require("./embedder");
-const { loadIndex }                    = require("./vector-store");
+const { loadArchitectureRecords }              = require("./loader");
+const { embedText }                            = require("./embedder");
+const { loadIndex }                            = require("./vector-store");
 const { retrieveArchitectures, attachRecords } = require("./retrieval");
-const { buildRetrievalQuery }          = require("./query-builder");
+const { buildRetrievalQuery }                  = require("./query-builder");
+const { analyzeRequirements }                  = require("./requirement-analyzer");
 
 // Control debug logging
 const RAG_DEBUG = process.env.RAG_DEBUG === "true";
 
 let _initialised = false;
 
-/**
- * Initialise the RAG system:
- *   1. Load architecture records from JSONL
- *   2. Attach records to the retrieval module
- *
- * Safe to call multiple times — idempotent.
- *
- * @returns {boolean} true if init succeeded, false if failed (non-fatal)
- */
 async function initRag() {
   if (_initialised) return true;
   try {
@@ -49,55 +41,59 @@ async function initRag() {
 /**
  * Execute RAG retrieval between Step 1 and Step 2.
  *
- * Phase 12 — Failure Fallback:
- *   If ANY part of RAG fails (index missing, model error, etc.),
- *   returns null instead of throwing. The caller in architecture.service.js
- *   will skip injection and continue without RAG context.
+ * Steps:
+ *  1. Analyze user inputs + Step 1 text to build Architecture Requirement Profile.
+ *  2. Build domain-rich natural-language retrieval query from profile.
+ *  3. Embed query and search vector index.
+ *  4. Apply metadata requirement coverage, category scoring, and diversity filter.
  *
- * @param {Object} params
- * @param {string}   params.idea
- * @param {string}   params.users
- * @param {string}   [params.budget]
- * @param {string[]} [params.features]
- * @param {string}   params.classificationText  Raw Step 1 output
- * @param {number}   [params.topK=3]
- * @returns {Promise<Array|null>} Retrieved results array, or null on failure
+ * Fallback: If ANY component fails (profile analyzer, embedder, index), returns null,
+ * allowing Step 2 to continue using original ungrounded logic.
  */
-async function ragRetrieve({ idea, users, budget, features, classificationText, topK = 3 }) {
+async function ragRetrieve({ idea, users, budget, features, tier, classificationText, topK = 3 }) {
   try {
-    // Ensure records are loaded
     await initRag();
 
-    // Verify index exists before proceeding
     const index = loadIndex();
     if (!index) {
       console.warn("[RAG] Vector index not found — run: npm run rag:index");
       return null;
     }
 
-    // Build natural-language query
-    const query = buildRetrievalQuery({ idea, users, budget, features, classificationText });
+    // Step 1.5: Build Architecture Requirement Profile
+    let profile = null;
+    try {
+      profile = await analyzeRequirements({ idea, users, budget, features, tier, classificationText });
+      if (RAG_DEBUG) {
+        console.log("[RAG] REQUIREMENT PROFILE:\n", JSON.stringify(profile, null, 2));
+      }
+    } catch (e) {
+      console.warn("[RAG] Requirement analyzer failed — falling back to Step 1 classification:", e.message);
+    }
+
+    // Step 1.6: Build natural language retrieval query
+    const query = buildRetrievalQuery({ idea, users, budget, features, classificationText, profile });
 
     if (RAG_DEBUG) {
       console.log("[RAG] QUERY:\n", query);
     }
 
-    // Retrieve and rerank
-    const results = await retrieveArchitectures(query, { topK, debug: RAG_DEBUG });
+    // Step 1.7: Retrieve, rerank, and apply diversity filter
+    const results = await retrieveArchitectures(query, { topK, debug: RAG_DEBUG, profile });
 
     if (RAG_DEBUG) {
       console.log(`[RAG] Retrieved ${results.length} result(s):`);
       results.forEach((r, i) =>
-        console.log(`  ${i + 1}. ${r.architecture.name} (semantic=${r.semanticScore.toFixed(4)}, final=${r.finalScore.toFixed(4)})`)
+        console.log(`  ${i + 1}. ${r.architecture.name} (${r.architecture.category}) | semantic=${r.semanticScore.toFixed(4)} | coverage=${r.requirementCoverage.toFixed(4)} | final=${r.finalScore.toFixed(4)}`)
       );
     }
 
     return results;
   } catch (err) {
-    // Phase 12: log but never propagate
     console.error("[RAG] Retrieval failed (pipeline will continue without RAG):", err.message);
     return null;
   }
 }
 
 module.exports = { initRag, ragRetrieve };
+

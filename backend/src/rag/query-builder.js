@@ -42,11 +42,7 @@ function parseClassification(classificationText) {
 /**
  * Build a natural-language retrieval query for the vector search.
  *
- * The query must convey:
- *   1. Application domain and idea (from user input)
- *   2. Scale and user count
- *   3. Core features (from user input)
- *   4. Classification dimensions (from Step 1 output)
+ * Combines user input, Step 1 classification, and the Architecture Requirement Profile.
  *
  * @param {Object} params
  * @param {string}   params.idea              User's application idea
@@ -54,66 +50,64 @@ function parseClassification(classificationText) {
  * @param {string}   [params.budget]          Budget hint (optional)
  * @param {string[]} [params.features]        Feature list (optional)
  * @param {string}   params.classificationText  Raw Step 1 output text
+ * @param {Object}   [params.profile]         Architecture Requirement Profile
  * @returns {string}  Natural-language retrieval query
  */
-function buildRetrievalQuery({ idea, users, budget, features, classificationText }) {
+function buildRetrievalQuery({ idea, users, budget, features, classificationText, profile }) {
   const cls = parseClassification(classificationText);
-
   const parts = [];
 
-  // ── Application domain ───────────────────────────────────────────────────
-  parts.push(`${idea.trim()} application`);
+  if (profile) {
+    // ── Domain & Workload Type ───────────────────────────────────────────────
+    const appTypeFormatted = (profile.application_type || "web_application").replace(/_/g, " ");
+    const clientStr = profile.clients && profile.clients.length > 0 ? profile.clients.join(" and ") : "web";
+    parts.push(`${profile.scale || cls.scale || "growth"}-scale ${appTypeFormatted} application for ${clientStr} clients serving ${users || "unspecified"} users`);
 
-  // ── User scale ───────────────────────────────────────────────────────────
-  if (users) {
-    parts.push(`for ${users} users`);
+    // ── Architecture Requirements & Capabilities ──────────────────────────────
+    if (profile.architecture_requirements && profile.architecture_requirements.length > 0) {
+      parts.push(`Primary architecture requirements: ${profile.architecture_requirements.join(", ")}`);
+    } else if (profile.capabilities && profile.capabilities.length > 0) {
+      parts.push(`Requires capabilities: ${profile.capabilities.join(", ")}`);
+    }
+
+    // ── Integration Patterns ──────────────────────────────────────────────────
+    if (profile.integration_patterns && profile.integration_patterns.length > 0) {
+      const patternsFormatted = profile.integration_patterns.map(p => p.replace(/_/g, " "));
+      parts.push(`Integration and communication patterns: ${patternsFormatted.join(", ")}`);
+    }
+
+    // ── Data Types & Tenancy ──────────────────────────────────────────────────
+    if (profile.data_types && profile.data_types.length > 0) {
+      parts.push(`Data domain includes: ${profile.data_types.join(", ")}`);
+    }
+
+    if (profile.tenancy_model && profile.tenancy_model !== "unknown") {
+      parts.push(`Tenancy model: ${profile.tenancy_model.replace(/_/g, "-")}`);
+    }
+
+    if (profile.geographic_scope && profile.geographic_scope !== "unknown") {
+      parts.push(`Geographic scope: ${profile.geographic_scope.replace(/_/g, " ")}`);
+    }
+
+    // ── Workload Dimensions ──────────────────────────────────────────────────
+    parts.push(`Compute intensity: ${profile.compute_intensity || cls.computeIntensity || "medium"}, data complexity: ${profile.data_complexity || cls.dataComplexity || "medium"}, real-time needs: ${profile.realtime_needs || cls.realtimeNeeds || "none"}`);
+
+  } else {
+    // Fallback if no profile is provided
+    parts.push(`${idea.trim()} application`);
+    if (users) parts.push(`for ${users} users`);
+
+    const featureList = features && features.length > 0 ? features.filter(f => f && f.trim()) : [];
+    if (featureList.length > 0) parts.push(`with features: ${featureList.join(", ")}`);
+
+    const signals = [];
+    if (cls.scale) signals.push(`${cls.scale} scale`);
+    if (cls.computeIntensity) signals.push(`${cls.computeIntensity} compute intensity`);
+    if (cls.dataComplexity) signals.push(`${cls.dataComplexity} data complexity`);
+    if (cls.realtimeNeeds) signals.push(`${cls.realtimeNeeds} real-time needs`);
+    if (signals.length > 0) parts.push(signals.join(", "));
   }
 
-  // ── Features ─────────────────────────────────────────────────────────────
-  const featureList = features && features.length > 0
-    ? features.filter(f => f && f.trim())
-    : [];
-  if (featureList.length > 0) {
-    parts.push(`with features: ${featureList.join(", ")}`);
-  }
-
-  // ── Classification signals ───────────────────────────────────────────────
-  const signals = [];
-
-  if (cls.scale) {
-    const scaleMap = {
-      free_tier:   "very small scale",
-      growth:      "growth-scale workload",
-      scale:       "mid-scale workload",
-      large_scale: "large-scale workload",
-      distributed: "globally distributed workload"
-    };
-    signals.push(scaleMap[cls.scale] || `${cls.scale} scale`);
-  }
-
-  if (cls.computeIntensity) {
-    signals.push(`${cls.computeIntensity} compute intensity`);
-  }
-
-  if (cls.dataComplexity) {
-    signals.push(`${cls.dataComplexity} data complexity`);
-  }
-
-  if (cls.realtimeNeeds && cls.realtimeNeeds !== "none") {
-    const rtMap = {
-      low:  "some real-time requirements",
-      high: "high real-time requirements with live updates"
-    };
-    signals.push(rtMap[cls.realtimeNeeds] || `${cls.realtimeNeeds} real-time needs`);
-  } else if (cls.realtimeNeeds === "none") {
-    signals.push("no real-time requirements");
-  }
-
-  if (signals.length > 0) {
-    parts.push(signals.join(", "));
-  }
-
-  // ── Budget hint ───────────────────────────────────────────────────────────
   if (budget && budget.trim() && budget.trim().toLowerCase() !== "not specified") {
     parts.push(`budget: ${budget.trim()}`);
   }
@@ -122,3 +116,4 @@ function buildRetrievalQuery({ idea, users, budget, features, classificationText
 }
 
 module.exports = { buildRetrievalQuery, parseClassification };
+

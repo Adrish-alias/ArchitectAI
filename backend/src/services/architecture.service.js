@@ -3,6 +3,8 @@ const { refineArchitecture } = require("./gemini.service");
 const { safeParse, attemptJsonRecovery } = require("./json.service");
 const { buildArchitectureMermaid, sanitizeMermaid } = require("./mermaid.service");
 const { ragRetrieve } = require("../rag/rag-service");
+const { RAG_ENABLED } = require("../config/env");
+
 const {
   buildClassificationSystemPrompt,
   buildClassificationUserPrompt
@@ -40,15 +42,22 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
 
   // ─── RAG RETRIEVAL ────────────────────────────────────────────────────────
   // Retrieve top-3 relevant AWS reference architectures from the knowledge base.
-  // Phase 12 fallback: ragRetrieve() catches all internal errors and returns null,
-  // so a RAG failure will never propagate to /generate callers.
-  const ragResults = await ragRetrieve({
-    idea,
-    users,
-    budget,
-    features,
-    classificationText: analysis
-  });
+  // When RAG_ENABLED=false, skips retrieval and ragResults remains null.
+  let ragResults = null;
+  if (RAG_ENABLED) {
+    ragResults = await ragRetrieve({
+      idea,
+      users,
+      budget,
+      features,
+      tier: archTier,
+      classificationText: analysis
+    });
+
+  } else {
+    console.log("RAG disabled via RAG_ENABLED=false — skipping retrieval");
+  }
+
 
   // ─── STEP 2: Service Selection ───────────────────────────────────────────
   const step2System = buildServiceSelectionSystemPrompt({ tier: archTier });
