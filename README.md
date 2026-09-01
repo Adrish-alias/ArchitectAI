@@ -84,8 +84,16 @@ ArchitectAI relies on a pioneering **Multi-LLM orchestration** strategy to maxim
 ArchitectAI/
 ├── backend/                  # Express.js Server & LLM Orchestration
 │   ├── .env                  # Secrets (Bedrock & Gemini Keys)
-│   ├── server.js             # Multi-stage Agent logic
-│   └── package.json          # Server dependencies
+│   ├── .env.example          # Environment variables template
+│   ├── package.json          # Server dependencies & scripts
+│   └── src/                  # Modular backend codebase
+│       ├── server.js         # Entry point (app listener)
+│       ├── app.js            # Express app configuration & routes
+│       ├── routes/           # Architecture & Analysis API endpoints
+│       ├── controllers/      # HTTP request handling
+│       ├── services/         # Generation, Analysis, LLM, Mermaid & JSON services
+│       └── prompts/          # Pipeline LLM prompts
+
 ├── frontend/                 # Client-side codebase
 │   └── react-app/
 │       ├── src/              # React components & React Flow hooks
