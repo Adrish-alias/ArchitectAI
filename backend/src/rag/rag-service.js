@@ -95,11 +95,31 @@ async function ragRetrieve({ idea, users, budget, features, tier, classification
     try {
       referenceAnalysis = analyzeReferences({ profile, ragResults: results });
       if (RAG_DEBUG && referenceAnalysis) {
-        console.log("[RAG] REFERENCE ANALYSIS & DESIGN DECISIONS:\n", JSON.stringify(referenceAnalysis, null, 2));
+        console.log("\n[RAG] GROUNDED DECISIONS (Supported by retrieved references):");
+        if (referenceAnalysis.groundedDecisions.length === 0) {
+          console.log("  (None — no retrieved references directly support the required patterns)");
+        } else {
+          referenceAnalysis.groundedDecisions.forEach(d => {
+            console.log(`  - Decision:    ${d.decision}`);
+            console.log(`    Requirement: ${d.requirement}`);
+            console.log(`    Source Ref:  ${d.source_reference_name} [${d.source_reference_id}]\n`);
+          });
+        }
+
+        console.log("[RAG] LLM-DERIVED DECISIONS (Model-derived without retrieved reference evidence):");
+        if (referenceAnalysis.llmDerivedDecisions.length === 0) {
+          console.log("  (None)");
+        } else {
+          referenceAnalysis.llmDerivedDecisions.forEach(d => {
+            console.log(`  - Decision:    ${d.decision}`);
+            console.log(`    Requirement: ${d.requirement}\n`);
+          });
+        }
       }
     } catch (e) {
       console.warn("[RAG] Reference analyzer failed — using raw retrieval results:", e.message);
     }
+
 
     return {
       results,

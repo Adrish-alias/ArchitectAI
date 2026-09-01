@@ -5,78 +5,27 @@
 const TIER_STEP2 = {
   cost: `
 
-TIER: COST-EFFICIENT — MINIMAL SERVERLESS ARCHITECTURE
-
-HARD RULES FOR COST TIER:
-1. MAXIMUM of 4-5 AWS services total. Strip everything non-essential.
-2. ALWAYS use:
-   - AWS Lambda (NEVER ECS/Fargate) — pay-per-invocation is cheapest
-   - DynamoDB On-Demand mode — no provisioned capacity
-   - API Gateway HTTP API (NOT REST) — 71% cheaper than REST API
-3. NEVER include these services in cost tier:
-   - ElastiCache (use DynamoDB DAX only if caching is critical)
-   - OpenSearch (use DynamoDB query/scan instead)
-   - CloudFront (skip CDN unless static site hosting)
-   - SQS (process synchronously in Lambda instead)
-   - ECS/Fargate (too expensive for low-traffic)
-   - WAF, CloudWatch custom metrics, Redshift, Athena
-4. For file storage: Use S3 Standard-IA or S3 One Zone-IA
-5. For search: Use DynamoDB Global Secondary Indexes instead of OpenSearch
-6. Authentication: Use Cognito User Pools with free tier (50k MAU free)
-7. Monitoring: Use CloudWatch basic (free tier) only
-
-ARCHITECTURE PATTERN: Simple serverless monolith — single Lambda handling all routes.`,
+TIER CONSTRAINT: COST-EFFICIENT — MINIMAL & BUDGET-CONSCIOUS
+- Goal: Minimize operational and infrastructure costs while satisfying core functional requirements.
+- Target Service Count: Approximately 4-6 services.
+- Architectural Preference: Serverless, pay-per-invocation, managed services (e.g. AWS Lambda, DynamoDB On-Demand, API Gateway HTTP API, S3 Standard-IA).
+- Guidance: Avoid unnecessary infrastructure complexity, dedicated servers, or high baseline fixed-cost services unless explicitly justified by requirements or retrieved references.`,
 
   balanced: `
 
-TIER: BALANCED — STANDARD PRODUCTION ARCHITECTURE
-
-RULES FOR BALANCED TIER:
-1. Target 6-8 AWS services — enough for production readiness.
-2. COMPUTE: Use Lambda for API + separate Lambda for background workers.
-   Switch to ECS Fargate ONLY if scale >= large_scale.
-3. INCLUDE if features warrant:
-   - SQS for async processing (background jobs, webhooks)
-   - S3 + CloudFront for static assets and file storage
-   - ElastiCache ONLY if realtime_needs = high
-4. DO NOT include:
-   - WAF (save for performance tier)
-   - Redshift (use Athena if analytics needed)
-   - Multi-AZ for DynamoDB (it's already global)
-5. DynamoDB: Use provisioned capacity with auto-scaling for predictable cost
-6. Monitoring: CloudWatch with basic alarms
-7. Include proper CI/CD considerations in implementation steps
-
-ARCHITECTURE PATTERN: Event-driven microservices with async processing.`,
+TIER CONSTRAINT: BALANCED — STANDARD PRODUCTION ARCHITECTURE
+- Goal: Balance cost-efficiency, production readiness, maintainability, and operational simplicity.
+- Target Service Count: Approximately 6-8 services.
+- Architectural Preference: Serverless and managed container services (e.g. AWS Lambda, Amazon ECS Fargate, DynamoDB, Aurora/RDS, API Gateway, SQS, CloudFront).
+- Guidance: Evaluate retrieved architecture patterns and user requirements. Include security (e.g. AWS WAF), caching, CDN, or database options if justified by requirements or retrieved evidence. Avoid gratuitous over-engineering.`,
 
   performance: `
 
-TIER: HIGH-PERFORMANCE — ENTERPRISE GRADE ARCHITECTURE
-
-HARD RULES FOR PERFORMANCE TIER:
-1. Target 10-14 AWS services — full enterprise stack.
-2. COMPUTE: Use ECS Fargate with auto-scaling (NEVER Lambda for primary API).
-   Keep Lambda only for event-driven workers and webhooks.
-3. ALWAYS include ALL of these:
-   - Amazon ECS Fargate — primary API compute with multi-AZ
-   - Amazon ElastiCache Redis — caching layer, multi-AZ replication
-   - Amazon CloudFront — global CDN for all responses
-   - AWS WAF — web application firewall on CloudFront
-   - Amazon SQS — async processing with dead-letter queues
-   - AWS Lambda — background workers and event handlers
-   - Amazon CloudWatch — full observability with custom metrics and dashboards
-   - Amazon S3 — asset storage with cross-region replication
-4. ADDITIONALLY include if features match:
-   - Amazon OpenSearch — full-text search cluster (3 nodes minimum)
-   - Amazon API Gateway WebSocket + ElastiCache pub/sub
-   - Amazon Redshift — analytics data warehouse
-   - AWS Secrets Manager — credential management
-   - Amazon Route 53 — DNS with health checks and failover
-5. DynamoDB: Use provisioned capacity with reserved capacity for cost savings
-6. All services must be Multi-AZ or globally replicated
-7. Include disaster recovery and failover in architecture strategy
-
-ARCHITECTURE PATTERN: Distributed microservices with multi-AZ redundancy, CDN edge caching, and full observability.`
+TIER CONSTRAINT: HIGH-PERFORMANCE — ENTERPRISE GRADE ARCHITECTURE
+- Goal: Maximum resilience, high throughput, low latency, advanced security, and comprehensive observability.
+- Target Service Count: Approximately 8-12+ services.
+- Architectural Preference: Multi-AZ container orchestration (ECS/EKS) or high-throughput serverless, dedicated caching (ElastiCache), edge protection (CloudFront + WAF), distributed queuing (SQS/Kinesis), and full-stack monitoring.
+- Guidance: Prioritize fault tolerance, disaster recovery, security, and high-availability patterns derived from user requirements and retrieved reference architectures.`
 };
 
 /**
@@ -88,52 +37,41 @@ function buildServiceSelectionSystemPrompt({ tier }) {
   const archTier = ["cost", "balanced", "performance"].includes(tier) ? tier : "balanced";
   return `
 You are a Principal AWS Solutions Architect.
-Select ONLY the AWS services this project actually needs. Output feeds directly into a JSON builder.
+Select ONLY the AWS services this system actually needs based on user requirements, workload constraints, and retrieved architectural evidence. Output feeds directly into a JSON builder.
 
-MANDATORY BASELINE (always included):
-  - Amazon Cognito                 [authentication]
-  - Amazon API Gateway             [HTTP API layer]
-  - AWS Lambda OR Amazon ECS       [compute — see tier rules]
-  - Amazon DynamoDB                [primary database]
+SERVICE SELECTION PRINCIPLES:
+1. Select AWS services based on the user's project requirements and retrieved architectural evidence. Do not include a service merely because it appears in a baseline list.
+2. Baseline AWS components (e.g., Amazon Cognito for auth, Amazon API Gateway for API management, AWS Lambda or Amazon ECS for compute, Amazon DynamoDB/Aurora/RDS for persistence) are RECOMMENDED starting points, but are NOT mandatory if a different architecture is better justified by requirements or retrieved reference evidence.
 
-CONDITIONAL — add ONLY when the classification AND tier rules say so:
+WORKLOAD & ARCHITECTURAL CONSIDERATIONS (GUARDRAILS):
+- Compute: Evaluate AWS Lambda, Amazon ECS (Fargate), or Amazon EKS based on workload characteristics, execution duration, and scale requirements. For large-scale or containerized workloads, evaluate ECS/Fargate alongside serverless Lambda.
+- Asynchronous & Event Processing: Evaluate Amazon SQS, EventBridge, Kinesis, or SNS for background jobs, decoupled event handling, or stream processing.
+- Data Storage & Search: Choose database and search engines (DynamoDB, Aurora, RDS, OpenSearch) based on data complexity, query patterns, and retrieved architecture patterns.
+- Edge & Content Distribution: Include Amazon S3 and Amazon CloudFront when user requirements or retrieved references call for static web hosting or CDN edge caching.
+- Security & Compliance: Evaluate AWS WAF, Cognito, or IAM scoping whenever security, multi-tenancy, or edge protection is required or supported by retrieved references.
 
-IF REALTIME_NEEDS = high:
-  + Amazon API Gateway (WebSocket)
-  + AWS Lambda (WebSocket Handler)
-  + Amazon ElastiCache (Redis)
-
-IF COMPUTE_INTENSITY = high OR features include background jobs:
-  + Amazon SQS
-  + AWS Lambda (Background Worker)
-
-IF DATA_COMPLEXITY = high OR features include "search":
-  + Amazon OpenSearch Service
-
-IF features include "files", "images", "video", "uploads", "documents", "storage":
-  + Amazon S3
-  + Amazon CloudFront
-
-IF scale = large_scale OR scale = distributed:
-  REPLACE AWS Lambda (API Handler) with Amazon ECS (Fargate)
-
-IF features include payments:
-  + AWS Lambda (Payment Webhook Handler)
+RETRIEVED ARCHITECTURAL EVIDENCE GROUNDING:
+1. Retrieved reference architectures represent real-world AWS architectural evidence, not merely background text.
+2. For each major user requirement, inspect retrieved reference architectures for applicable patterns, decisions, tradeoffs, and service relationships.
+3. When a retrieved pattern is relevant, incorporate its underlying architectural decision unless there is a concrete technical, scale, cost, or requirement conflict.
+4. If you reject a pattern recommended by a retrieved reference, explain the technical or cost justification in your Architecture Strategy.
+5. Do NOT blindly copy services. Use reference architectures to inform architectural decisions, not to duplicate a service list verbatim.
+6. Retrieved references are strong architectural evidence but are not absolute constraints. You may adapt or combine patterns to fit the specific project tier and scale.
 
 OUTPUT FORMAT — plain text:
 
 ## Architecture Strategy
-<2-4 sentences of rationale specific to THIS project AND this tier, explicitly addressing tenant isolation, security, and scaling strategy>
+<2-4 sentences of rationale specific to THIS project AND this tier, explicitly addressing architectural trade-offs, security, scaling strategy, and why specific retrieved patterns were adopted or adapted>
 
 ## Architectural Decisions & Grounding
-- [Requirement]: <specific requirement e.g. multi-tenant data isolation> -> Grounded Pattern: <pattern/decision from reference or baseline> -> Implementation: <how selected services implement it>
+- [Requirement]: <specific user requirement> -> Grounded Pattern: <pattern name> -> Source Reference: <source reference name [ID] OR LLM-Derived Pattern> -> Architectural Decision: <explicit architectural decision> -> Implementation: <how selected services implement it>
 
 ## Selected AWS Services
 (repeat the block below for each service, no numbering)
 
 SERVICE: <exact AWS service name>
 ROLE: <specific technical role in this system, including architectural pattern details like tenant-scoped partitioning or JWT claims>
-JUSTIFICATION: <which feature, scale, or reference pattern forces inclusion>
+JUSTIFICATION: <which feature, scale requirement, or retrieved reference pattern forces inclusion>
 DATA_FLOW: <one sentence: what enters and what leaves>
 ${TIER_STEP2[archTier]}
 `;
@@ -183,32 +121,16 @@ function buildRagContextBlock(ragInput) {
 
   const refsBlock = results.map((result, i) => {
     const arch = result.architecture;
-    const refAnalysis = analysis?.referenceAnalyses?.[i] || null;
 
     const services = (arch.services || [])
       .map(s => `  - ${s.name}: ${s.role || ""}`)
       .join("\n");
-
-    const matchedReqs = refAnalysis && refAnalysis.matchedRequirements.length > 0
-      ? refAnalysis.matchedRequirements.map(m => `  - ${m}`).join("\n")
-      : (arch.requirements_signals || []).map(r => `  - ${r}`).join("\n");
-
-    const decisions = refAnalysis && refAnalysis.designDecisionsToConsider.length > 0
-      ? refAnalysis.designDecisionsToConsider.map(d => `  - ${d}`).join("\n")
-      : "  - Adapt general service architecture patterns as needed";
 
     return `
 --- Reference ${i + 1}: ${arch.name} ---
 ID: ${arch.id}
 Category: ${arch.category}
 Relevance Score: ${result.finalScore.toFixed(3)}
-Relevance Level: ${refAnalysis?.relevanceLevel?.toUpperCase() || "MODERATE"}
-
-Matched Requirements:
-${matchedReqs}
-
-Architectural Decisions to Consider:
-${decisions}
 
 Relevant AWS Services & Roles:
 ${services}
@@ -218,19 +140,36 @@ Tradeoffs: ${(arch.tradeoffs || []).join("; ")}
 `;
   }).join("\n");
 
+  const groundedBlock = (analysis?.groundedDecisions || []).length > 0
+    ? analysis.groundedDecisions.map(g =>
+        `  - Requirement: ${g.requirement}\n    Grounded Decision: ${g.decision}\n    Source Reference: ${g.source_reference_name} [${g.source_reference_id}]`
+      ).join("\n\n")
+    : "  (None — no retrieved references directly support the specified requirements)";
+
+  const llmDerivedBlock = (analysis?.llmDerivedDecisions || []).length > 0
+    ? analysis.llmDerivedDecisions.map(l =>
+        `  - Requirement: ${l.requirement}\n    LLM-Derived Decision: ${l.decision}\n    Source Reference: NONE (No retrieved reference supports this pattern)`
+      ).join("\n\n")
+    : "  (None)";
+
   return `
 
 <aws_reference_architectures>
 ${groundingHeader}
 
-Retrieved Reference Architectures & Grounded Design Decisions:
+Retrieved Architecture Evidence:
 ${refsBlock}
 
-INSTRUCTIONS FOR ADOPTING ARCHITECTURAL DECISIONS:
-1. Retrieved references are architectural evidence. Use them to inform architectural decisions when relevant.
-2. Do not blindly copy service names. Do not add a service solely because it appears in a reference.
-3. For each primary requirement (especially multi-tenancy, data isolation, real-time updates), explicitly adopt and document a grounded architectural decision from the reference in ## Architectural Decisions & Grounding.
-4. Ensure selected service roles explicitly describe their architectural pattern (e.g. "Amazon Cognito: SaaS identity provider issuing JWTs with tenant_id claim", "Amazon DynamoDB: Primary database using partition key tenant_id#user_id for data isolation").
+GROUNDED ARCHITECTURAL DECISIONS (Supported by retrieved references above):
+${groundedBlock}
+
+LLM-DERIVED ARCHITECTURAL DECISIONS (Model-derived without retrieved reference evidence):
+${llmDerivedBlock}
+
+CRITICAL TRACEABILITY RULES FOR ## Architectural Decisions & Grounding:
+1. ONLY label a decision as "Grounded Pattern: <Pattern>" if it is listed above under GROUNDED ARCHITECTURAL DECISIONS with a valid Source Reference ID.
+2. If a decision is listed under LLM-DERIVED ARCHITECTURAL DECISIONS (or unsupported by retrieved references), label it as "LLM-Derived Pattern: <Pattern>" and DO NOT claim that a reference architecture grounded it.
+3. Do not make false attributions or invent non-existent connections to retrieved references.
 </aws_reference_architectures>
 `;
 }
@@ -240,5 +179,3 @@ module.exports = {
   buildServiceSelectionSystemPrompt,
   buildServiceSelectionUserPrompt
 };
-
-

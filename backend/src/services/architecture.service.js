@@ -2,8 +2,10 @@ const { callLlama } = require("./llama.service");
 const { refineArchitecture } = require("./gemini.service");
 const { safeParse, attemptJsonRecovery } = require("./json.service");
 const { buildArchitectureMermaid, sanitizeMermaid } = require("./mermaid.service");
+const { validateArchitectureConsistency } = require("./validator.service");
 const { ragRetrieve } = require("../rag/rag-service");
 const { RAG_ENABLED } = require("../config/env");
+
 
 const {
   buildClassificationSystemPrompt,
@@ -23,6 +25,11 @@ const {
 } = require("../prompts/generation/mermaid-validation.prompt");
 
 
+const {
+  buildArchitectureCorrectionSystemPrompt,
+  buildArchitectureCorrectionUserPrompt
+} = require("../prompts/generation/architecture-correction.prompt");
+
 /**
  * Run the full 5-step architecture generation pipeline.
  *
@@ -41,8 +48,6 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   console.log("STEP 1:\n", analysis);
 
   // ─── RAG RETRIEVAL ────────────────────────────────────────────────────────
-  // Retrieve top-3 relevant AWS reference architectures from the knowledge base.
-  // When RAG_ENABLED=false, skips retrieval and ragResults remains null.
   let ragResults = null;
   if (RAG_ENABLED) {
     ragResults = await ragRetrieve({
@@ -53,16 +58,13 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
       tier: archTier,
       classificationText: analysis
     });
-
   } else {
     console.log("RAG disabled via RAG_ENABLED=false — skipping retrieval");
   }
 
-
   // ─── STEP 2: Service Selection ───────────────────────────────────────────
   const step2System = buildServiceSelectionSystemPrompt({ tier: archTier });
   const step2User   = buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragResults });
-
 
   const serviceStack = await callLlama(step2System, step2User, 1500);
   console.log("STEP 2:\n", serviceStack);
@@ -87,19 +89,16 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
     throw err;
   }
 
-  // Ensure required keys exist (defensive defaults for truncated responses)
   parsed.aws_services          = parsed.aws_services          || [];
   parsed.architecture_overview = parsed.architecture_overview || {};
   parsed.cost_breakdown        = parsed.cost_breakdown        || {};
   parsed.implementation_steps  = parsed.implementation_steps  || [];
+  parsed.tier                  = archTier;
 
-  // Ensure tier is set in output
-  parsed.tier = archTier;
   console.log(`STEP 3 OK [${archTier}]. Services:`, parsed.aws_services.map(s => s.name));
 
   // ─── STEP 4: Mermaid Diagram Generator ──────────────────────────────────
   const preBuildDiagram = buildArchitectureMermaid(parsed);
-
   const step4User = buildMermaidValidationUserPrompt({ diagram: preBuildDiagram });
   const rawMermaid = await callLlama(step4System, step4User, 1200);
   parsed.mermaid = sanitizeMermaid(rawMermaid);
@@ -110,6 +109,61 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   }
 
   console.log("STEP 4 MERMAID:\n", parsed.mermaid);
+
+  // ─── ARCHITECTURE CONSISTENCY VALIDATION & CORRECTION LOOP ───────────────
+  let validationReport = validateArchitectureConsistency(parsed);
+  let validationStatus = "PASS";
+  let attempt = 0;
+  const MAX_CORRECTION_ATTEMPTS = 2;
+
+  if (validationReport.valid) {
+    console.log("VALIDATION: PASS");
+    validationStatus = "PASS";
+  } else if (validationReport.hasSemanticIssues) {
+    while (attempt < MAX_CORRECTION_ATTEMPTS && validationReport.hasSemanticIssues) {
+      attempt++;
+      console.log(`VALIDATION: CORRECTION_ATTEMPT_${attempt}`);
+
+      try {
+        const corrSystem = buildArchitectureCorrectionSystemPrompt({ tier: archTier });
+        const corrUser   = buildArchitectureCorrectionUserPrompt({
+          currentArchitecture: parsed,
+          semanticFindings: validationReport.semanticFindings
+        });
+
+        const rawCorr = await callLlama(corrSystem, corrUser, 3500);
+        const parsedCorr = safeParse(rawCorr) || attemptJsonRecovery(rawCorr);
+
+        if (parsedCorr && Array.isArray(parsedCorr.aws_services)) {
+          parsedCorr.tier = archTier;
+          if (!parsedCorr.mermaid || !parsedCorr.mermaid.startsWith("graph")) {
+            parsedCorr.mermaid = sanitizeMermaid(buildArchitectureMermaid(parsedCorr));
+          } else {
+            parsedCorr.mermaid = sanitizeMermaid(parsedCorr.mermaid);
+          }
+
+          parsed = parsedCorr;
+          validationReport = validateArchitectureConsistency(parsed);
+
+          if (validationReport.valid) {
+            console.log("VALIDATION: PASS");
+            validationStatus = "PASS";
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn(`[VALIDATOR] Correction attempt ${attempt} error:`, err.message);
+      }
+    }
+
+    if (!validationReport.valid) {
+      console.log("VALIDATION: NEEDS_REVIEW");
+      validationStatus = "NEEDS_REVIEW";
+    }
+  }
+
+  parsed.validation_status = validationStatus;
+  parsed.validation_report = validationReport;
 
   // ─── STEP 5: Gemini Validation & Refinement ─────────────────────────────
   console.log("STEP 5 (Gemini) START");
@@ -122,7 +176,11 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
     finalData = parsed;
   }
 
+  finalData.validation_status = validationStatus;
+  finalData.validation_report = validationReport;
+
   return finalData;
 }
 
 module.exports = { generateArchitecture };
+

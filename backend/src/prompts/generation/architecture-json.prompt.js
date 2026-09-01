@@ -140,9 +140,16 @@ STRICT RULES:
 - cost_per_user must be calculated: monthly_estimate midpoint / (users / 1000)
 - Be concise in strings to avoid hitting length limits
 - All JSON strings must be properly escaped
+
+SERVICE JUSTIFICATION RULES:
+- Justifications MUST be requirement-specific and explain why THAT service is needed for THIS architecture.
+- Avoid generic phrases such as "Chosen because AWS Lambda is scalable", "Chosen because DynamoDB is highly available", or "Required for the application".
+- Do NOT overstate technical guarantees (e.g., do NOT claim "DynamoDB provides isolated tenant data" — instead say "DynamoDB implements the tenant data model, with tenant-aware authorization/data-access controls enforcing isolation"; do NOT claim "Cognito provides tenant isolation" — instead say "Cognito provides user authentication and issues JWT tokens containing tenant identity claims; application authorization layers enforce isolation").
+- For RAG-grounded services, explain the architectural decision that caused the service to be selected without claiming unsupported decisions.
 ${TIER_STEP3[archTier]}
 `;
 }
+
 
 /**
  * Build the Step 3 user prompt.

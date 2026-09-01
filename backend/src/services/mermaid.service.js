@@ -80,9 +80,14 @@ function buildArchitectureMermaid(parsed) {
     hasRoute53 ? `User --> Route53` : null,
     hasRoute53 ? `Route53 --> Cognito` : `User --> Cognito`,
     `Cognito -->|"JWT"| APIGateway`,
-    hasWAF && hasCloudFront ? `APIGateway -->|"response"| CloudFront` : null,
-    hasWAF && hasCloudFront ? `CloudFront -->|"filtered"| WAF` : null,
-    hasWAF && !hasCloudFront ? `APIGateway -->|"filtered"| WAF` : null,
+    hasWAF && hasCloudFront ? `User -->|"requests"| CloudFront` : null,
+    hasWAF && hasCloudFront ? `CloudFront -->|"API traffic"| WAF` : null,
+    hasWAF && hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
+    hasWAF && !hasCloudFront ? `User -->|"HTTPS"| WAF` : null,
+    hasWAF && !hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
+    !hasWAF && hasCloudFront ? `User -->|"HTTPS"| CloudFront` : null,
+    !hasWAF && hasCloudFront ? `CloudFront -->|"origin / API"| APIGateway` : null,
+    !hasWAF && !hasCloudFront ? `User -->|"HTTPS"| APIGateway` : null,
     `APIGateway -->|"request"| ${computeNode}`,
     `${computeNode} -->|"read/write"| DynamoDB`
   ].filter(Boolean).join("\n");
@@ -101,8 +106,8 @@ function buildArchitectureMermaid(parsed) {
     `SQS -->|"trigger"| LambdaWorker`
   ].join("\n") : "";
 
-  const s3Edge    = hasS3         ? `${computeNode} -->|"upload/fetch"| S3` : "";
-  const cdnEdge   = (hasCloudFront && hasS3 && !hasWAF) ? `CloudFront -->|"origin"| S3` : "";
+  const s3Edge    = hasS3 ? `${computeNode} -->|"upload/fetch"| S3` : "";
+  const cdnEdge   = (hasCloudFront && hasS3) ? `CloudFront -->|"origin: static assets"| S3` : "";
   const searchEdges = hasOpenSearch ? [
     hasWorker ? `LambdaWorker -->|"index"| OpenSearch` : "",
     `${computeNode} -->|"search"| OpenSearch`
@@ -112,6 +117,7 @@ function buildArchitectureMermaid(parsed) {
 
   const allEdges = [coreEdges, wsEdges, cacheRestEdge, sqsEdges, s3Edge, cdnEdge, searchEdges, monitorEdges]
     .filter(Boolean).join("\n");
+
 
   const securitySubgraph = securityLines
     ? `subgraph Security["Security Layer"]\n${securityLines}\nend`
