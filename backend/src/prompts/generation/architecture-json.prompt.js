@@ -99,7 +99,14 @@ PRODUCE THIS EXACT SCHEMA — fill every field:
     "write_flow": "User → API Gateway → Lambda/ECS → DynamoDB → [SQS → Worker]",
     "realtime_flow": "WebSocket path OR exactly the string: N/A - no real-time features",
     "async_flow": "SQS→Worker path OR exactly the string: N/A - no async processing",
-    "key_tradeoffs": "1-2 sentences about what this tier sacrifices compared to other tiers"
+    "key_tradeoffs": "1-2 sentences about what this tier sacrifices compared to other tiers",
+    "topology_edges": [
+      {
+        "from": "node",
+        "to": "node",
+        "relationship": "string"
+      }
+    ]
   },
   "aws_services": [
     {
@@ -140,6 +147,14 @@ STRICT RULES:
 - cost_per_user must be calculated: monthly_estimate midpoint / (users / 1000)
 - Be concise in strings to avoid hitting length limits
 - All JSON strings must be properly escaped
+
+STRICT TOPOLOGY EDGES RULES:
+- topology_edges MUST accurately reflect the \`## Architecture Topology\` section produced by Step 2.
+- Do not silently discard topology edges during JSON assembly.
+- Do not invent edges that were not represented in Step 2 unless required to make an explicitly selected service operationally connected.
+- Every important service-to-service relationship represented in Step 2 should survive into topology_edges.
+- The nodes in topology_edges must correspond to services/components actually present in the architecture.
+- The topology_edges field exists specifically to preserve the architectural graph skeleton for the Mermaid generation stage.
 
 SERVICE JUSTIFICATION RULES:
 - Justifications MUST be requirement-specific and explain why THAT service is needed for THIS architecture.

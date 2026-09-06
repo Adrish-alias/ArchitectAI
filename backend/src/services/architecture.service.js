@@ -58,6 +58,11 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
       tier: archTier,
       classificationText: analysis
     });
+
+    if (ragResults && Array.isArray(ragResults.results)) {
+      const extractedConnections = ragResults.results.flatMap(r => (r.architecture.connections || []).map(c => `${c.from || c.source} -> ${c.to || c.target}: ${c.relationship || c.rel}`));
+      console.log(`[RAG TOPOLOGY EXTRACTION] Extracted ${extractedConnections.length} topology connections from ${ragResults.results.length} retrieved references:`, extractedConnections);
+    }
   } else {
     console.log("RAG disabled via RAG_ENABLED=false — skipping retrieval");
   }
@@ -68,6 +73,10 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
 
   const serviceStack = await callLlama(step2System, step2User, 1500);
   console.log("STEP 2:\n", serviceStack);
+
+  const step2TopologyMatch = serviceStack.match(/## Architecture Topology\s*([\s\S]*?)(?=## Selected AWS Services|$)/i);
+  const step2TopologyText  = step2TopologyMatch ? step2TopologyMatch[1].trim() : "None";
+  console.log("[PIPELINE HANDOFF Step 2 -> Step 3] Extracted Step 2 Architecture Topology:\n", step2TopologyText);
 
   // ─── STEP 3: JSON Assembly ───────────────────────────────────────────────
   const step3System = buildArchitectureJsonSystemPrompt({ tier: archTier });
@@ -91,11 +100,17 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
 
   parsed.aws_services          = parsed.aws_services          || [];
   parsed.architecture_overview = parsed.architecture_overview || {};
+  parsed.architecture_overview.topology_edges = parsed.architecture_overview.topology_edges || [];
   parsed.cost_breakdown        = parsed.cost_breakdown        || {};
   parsed.implementation_steps  = parsed.implementation_steps  || [];
   parsed.tier                  = archTier;
 
   console.log(`STEP 3 OK [${archTier}]. Services:`, parsed.aws_services.map(s => s.name));
+  console.log(`[PIPELINE HANDOFF Step 3 -> Step 4] Parsed topology_edges (${parsed.architecture_overview.topology_edges.length} edges):`, JSON.stringify(parsed.architecture_overview.topology_edges, null, 2));
+
+  if (ragResults && ragResults.referenceAnalysis?.topScore >= 0.82 && parsed.architecture_overview.topology_edges.length === 0) {
+    console.warn("[PIPELINE WARNING] High-confidence RAG match present, but Step 3 topology_edges is empty!");
+  }
 
   // ─── STEP 4: Mermaid Diagram Generator ──────────────────────────────────
   const preBuildDiagram = buildArchitectureMermaid(parsed);

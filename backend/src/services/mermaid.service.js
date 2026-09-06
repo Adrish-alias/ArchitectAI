@@ -16,22 +16,58 @@ function sanitizeMermaid(raw) {
 /* =========================
    Build Generation Mermaid
    Programmatically constructs Mermaid for POST /generate.
-   Preserves the exact node detection and subgraph layout
-   from the original server.js implementation.
+   Preserves exact node detection and subgraph layout while
+   dynamically supporting nodes from topology_edges as authoritative graph skeleton.
 ========================= */
+function resolveMermaidNodeId(name, { hasECS, dynamicNodesMap }) {
+  if (!name || typeof name !== "string") return "Node";
+  const lower = name.toLowerCase().trim();
+
+  if (/user|end user|client|mobile client/i.test(lower)) return "User";
+  if (/cognito/i.test(lower)) return "Cognito";
+  if (/waf/i.test(lower)) return "WAF";
+  if (/route\s*53/i.test(lower)) return "Route53";
+  if (/cloudfront/i.test(lower)) return "CloudFront";
+  if (/api\s*gateway.*websocket/i.test(lower)) return "WebSocketGW";
+  if (/api\s*gateway|alb|application load balancer/i.test(lower)) return "APIGateway";
+  if (/lambda.*websocket/i.test(lower)) return "LambdaWS";
+  if (/lambda.*worker|background/i.test(lower)) return "LambdaWorker";
+  if (/lambda/i.test(lower)) return hasECS ? "ECS" : "LambdaAPI";
+  if (/ecs|fargate/i.test(lower)) return "ECS";
+  if (/sqs/i.test(lower)) return "SQS";
+  if (/dynamodb/i.test(lower)) return "DynamoDB";
+  if (/elasticache|redis/i.test(lower)) return "ElastiCache";
+  if (/opensearch/i.test(lower)) return "OpenSearch";
+  if (/s3/i.test(lower)) return "S3";
+  if (/cloudwatch/i.test(lower)) return "CloudWatch";
+
+  // Dynamic node ID resolution for any other service/component
+  const cleanId = name.replace(/[^a-zA-Z0-9]/g, "");
+  const nodeId = cleanId || "Node";
+
+  if (dynamicNodesMap && !dynamicNodesMap.has(nodeId)) {
+    dynamicNodesMap.set(nodeId, name.trim());
+  }
+
+  return nodeId;
+}
+
 function buildArchitectureMermaid(parsed) {
-  const serviceNames = parsed.aws_services.map(s => s.name);
-  const hasWebSocket  = serviceNames.some(n => /websocket/i.test(n));
-  const hasElastiCache = serviceNames.some(n => /elasticache/i.test(n));
-  const hasSQS        = serviceNames.some(n => /\bsqs\b/i.test(n));
-  const hasS3         = serviceNames.some(n => /\bS3\b/i.test(n));
-  const hasOpenSearch = serviceNames.some(n => /opensearch/i.test(n));
-  const hasCloudFront = serviceNames.some(n => /cloudfront/i.test(n));
-  const hasWorker     = serviceNames.some(n => /worker/i.test(n));
-  const hasECS        = serviceNames.some(n => /\becs\b/i.test(n));
-  const hasWAF        = serviceNames.some(n => /\bwaf\b/i.test(n));
-  const hasCloudWatch = serviceNames.some(n => /cloudwatch/i.test(n));
-  const hasRoute53    = serviceNames.some(n => /route.?53/i.test(n));
+  const serviceNames = (parsed.aws_services || []).map(s => s.name);
+  const topologyEdges = parsed.architecture_overview?.topology_edges || [];
+
+  const hasWebSocket     = serviceNames.some(n => /websocket/i.test(n));
+  const hasElastiCache   = serviceNames.some(n => /elasticache/i.test(n));
+  const hasSQS           = serviceNames.some(n => /\bsqs\b/i.test(n));
+  const hasS3            = serviceNames.some(n => /\bS3\b/i.test(n));
+  const hasOpenSearch    = serviceNames.some(n => /opensearch/i.test(n));
+  const hasCloudFront    = serviceNames.some(n => /cloudfront/i.test(n));
+  const hasWorker        = serviceNames.some(n => /worker/i.test(n));
+  const hasECS           = serviceNames.some(n => /\becs\b/i.test(n));
+  const hasWAF           = serviceNames.some(n => /\bwaf\b/i.test(n));
+  const hasCloudWatch    = serviceNames.some(n => /cloudwatch/i.test(n));
+  const hasRoute53       = serviceNames.some(n => /route.?53/i.test(n));
+
   const computeNode   = hasECS ? "ECS" : "LambdaAPI";
   const computeLabel  = hasECS ? "Amazon ECS Fargate" : "Lambda API Handler";
 
@@ -63,12 +99,10 @@ function buildArchitectureMermaid(parsed) {
       ].filter(Boolean).join("\n")
     : "  %% no storage";
 
-  // Security subgraph (performance tier)
   const securityLines = hasWAF
-    ? [ hasWAF ? `  WAF["AWS WAF"]` : "" ].filter(Boolean).join("\n")
+    ? [ `  WAF["AWS WAF"]` ]
     : null;
 
-  // Monitoring subgraph (performance tier)
   const monitoringLines = (hasCloudWatch || hasRoute53)
     ? [
         hasCloudWatch ? `  CloudWatch["Amazon CloudWatch"]` : "",
@@ -76,48 +110,74 @@ function buildArchitectureMermaid(parsed) {
       ].filter(Boolean).join("\n")
     : null;
 
-  const coreEdges = [
-    hasRoute53 ? `User --> Route53` : null,
-    hasRoute53 ? `Route53 --> Cognito` : `User --> Cognito`,
-    `Cognito -->|"JWT"| APIGateway`,
-    hasWAF && hasCloudFront ? `User -->|"requests"| CloudFront` : null,
-    hasWAF && hasCloudFront ? `CloudFront -->|"API traffic"| WAF` : null,
-    hasWAF && hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
-    hasWAF && !hasCloudFront ? `User -->|"HTTPS"| WAF` : null,
-    hasWAF && !hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
-    !hasWAF && hasCloudFront ? `User -->|"HTTPS"| CloudFront` : null,
-    !hasWAF && hasCloudFront ? `CloudFront -->|"origin / API"| APIGateway` : null,
-    !hasWAF && !hasCloudFront ? `User -->|"HTTPS"| APIGateway` : null,
-    `APIGateway -->|"request"| ${computeNode}`,
-    `${computeNode} -->|"read/write"| DynamoDB`
-  ].filter(Boolean).join("\n");
+  let allEdges = "";
+  const dynamicNodesMap = new Map();
 
-  const wsEdges = hasWebSocket ? [
-    `User -->|"WS upgrade"| WebSocketGW`,
-    `WebSocketGW --> LambdaWS`,
-    `LambdaWS -->|"pub/sub"| ElastiCache`,
-    `ElastiCache -->|"fan-out"| LambdaWS`
-  ].join("\n") : "";
+  if (Array.isArray(topologyEdges) && topologyEdges.length > 0) {
+    const customEdges = topologyEdges.map(edge => {
+      const srcId = resolveMermaidNodeId(edge.from, { hasECS, dynamicNodesMap });
+      const dstId = resolveMermaidNodeId(edge.to, { hasECS, dynamicNodesMap });
+      if (srcId === dstId) return null;
+      const rel = (edge.relationship || "").replace(/["()]/g, "").trim();
+      return rel ? `${srcId} -->|"${rel}"| ${dstId}` : `${srcId} --> ${dstId}`;
+    }).filter(Boolean);
 
-  const cacheRestEdge = hasElastiCache ? `${computeNode} -->|"cache"| ElastiCache` : "";
+    allEdges = [...new Set(customEdges)].join("\n");
+  }
 
-  const sqsEdges = hasSQS ? [
-    `${computeNode} -->|"enqueue"| SQS`,
-    `SQS -->|"trigger"| LambdaWorker`
-  ].join("\n") : "";
+  if (!allEdges) {
+    const coreEdges = [
+      hasRoute53 ? `User --> Route53` : null,
+      hasRoute53 ? `Route53 --> Cognito` : `User --> Cognito`,
+      `Cognito -->|"JWT"| APIGateway`,
+      hasWAF && hasCloudFront ? `User -->|"requests"| CloudFront` : null,
+      hasWAF && hasCloudFront ? `CloudFront -->|"API traffic"| WAF` : null,
+      hasWAF && hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
+      hasWAF && !hasCloudFront ? `User -->|"HTTPS"| WAF` : null,
+      hasWAF && !hasCloudFront ? `WAF -->|"filtered"| APIGateway` : null,
+      !hasWAF && hasCloudFront ? `User -->|"HTTPS"| CloudFront` : null,
+      !hasWAF && hasCloudFront ? `CloudFront -->|"origin / API"| APIGateway` : null,
+      !hasWAF && !hasCloudFront ? `User -->|"HTTPS"| APIGateway` : null,
+      `APIGateway -->|"request"| ${computeNode}`,
+      `${computeNode} -->|"read/write"| DynamoDB`
+    ].filter(Boolean).join("\n");
 
-  const s3Edge    = hasS3 ? `${computeNode} -->|"upload/fetch"| S3` : "";
-  const cdnEdge   = (hasCloudFront && hasS3) ? `CloudFront -->|"origin: static assets"| S3` : "";
-  const searchEdges = hasOpenSearch ? [
-    hasWorker ? `LambdaWorker -->|"index"| OpenSearch` : "",
-    `${computeNode} -->|"search"| OpenSearch`
-  ].filter(Boolean).join("\n") : "";
+    const wsEdges = hasWebSocket ? [
+      `User -->|"WS upgrade"| WebSocketGW`,
+      `WebSocketGW --> LambdaWS`,
+      `LambdaWS -->|"pub/sub"| ElastiCache`,
+      `ElastiCache -->|"fan-out"| LambdaWS`
+    ].join("\n") : "";
 
-  const monitorEdges = hasCloudWatch ? `${computeNode} -.->|"metrics"| CloudWatch` : "";
+    const cacheRestEdge = hasElastiCache ? `${computeNode} -->|"cache"| ElastiCache` : "";
 
-  const allEdges = [coreEdges, wsEdges, cacheRestEdge, sqsEdges, s3Edge, cdnEdge, searchEdges, monitorEdges]
-    .filter(Boolean).join("\n");
+    const sqsEdges = hasSQS ? [
+      `${computeNode} -->|"enqueue"| SQS`,
+      `SQS -->|"trigger"| LambdaWorker`
+    ].join("\n") : "";
 
+    const s3Edge    = hasS3 ? `${computeNode} -->|"upload/fetch"| S3` : "";
+    const cdnEdge   = (hasCloudFront && hasS3) ? `CloudFront -->|"origin: static assets"| S3` : "";
+    const searchEdges = hasOpenSearch ? [
+      hasWorker ? `LambdaWorker -->|"index"| OpenSearch` : "",
+      `${computeNode} -->|"search"| OpenSearch`
+    ].filter(Boolean).join("\n") : "";
+
+    const monitorEdges = hasCloudWatch ? `${computeNode} -.->|"metrics"| CloudWatch` : "";
+
+    allEdges = [coreEdges, wsEdges, cacheRestEdge, sqsEdges, s3Edge, cdnEdge, searchEdges, monitorEdges]
+      .filter(Boolean).join("\n");
+  }
+
+  const dynamicSubgraphLines = dynamicNodesMap.size > 0
+    ? Array.from(dynamicNodesMap.entries())
+        .map(([id, label]) => `  ${id}["${label}"]`)
+        .join("\n")
+    : "";
+
+  const dynamicSubgraph = dynamicSubgraphLines
+    ? `subgraph Services["Services and Integration"]\n${dynamicSubgraphLines}\nend`
+    : "";
 
   const securitySubgraph = securityLines
     ? `subgraph Security["Security Layer"]\n${securityLines}\nend`
@@ -160,6 +220,8 @@ ${storageSubgraphLines}
 end
 
 ${monitoringSubgraph}
+
+${dynamicSubgraph}
 
 ${allEdges}`;
 }

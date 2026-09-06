@@ -22,8 +22,9 @@
 Designing cloud infrastructure traditionally requires significant domain expertise and manual architecture design. ArchitectAI provides:
 
 - **Instant Productivity:** Move from idea to architecture recommendations in seconds.
-- **RAG Reference Grounding:** Ground architectural decisions in curated AWS Reference Architectures through local vector search.
+- **RAG Reference & Topology Grounding:** Ground service selection and structural connections in curated AWS Reference Architectures using semantic vector search and dynamic confidence-based topology preservation.
 - **Traceable Architectural Decisions:** Distinguish between `RETRIEVED_GROUNDED` decisions backed by retrieved references and `LLM_DERIVED` decisions generated from model reasoning.
+- **End-to-End Graph Skeleton Preservation:** Pass retrieved reference topology through multi-step LLM prompts to produce structured `topology_edges` and accurate visual graph representations.
 - **Automated Consistency Validation:** Validate service selections, data flows, and architecture diagrams, with an LLM correction loop for semantic inconsistencies.
 - **Interactive Architecture Visualization:** Explore, edit, and inspect generated infrastructure through an interactive React Flow interface.
 - **Architecture Analysis:** Analyze generated architectures for potential cost issues, over-provisioning, and architectural anti-patterns.
@@ -41,18 +42,18 @@ Structured Requirement Profile
             ↓
 Local RAG Retrieval + Reranking
             ↓
-Reference Analysis & Decision Grounding
+Reference Analysis, Topology Extraction & Grounding
             ↓
-LLM Service Selection
+LLM Service Selection & Topology Definition
             ↓
-Architecture JSON + Mermaid Diagram
+Architecture JSON (with topology_edges) + Mermaid Diagram
             ↓
 Consistency Validation
             ↓
 LLM Correction Loop
             ↓
 Final Architecture + Cost + Implementation Plan
-````
+```
 
 ---
 
@@ -112,11 +113,11 @@ ArchitectAI uses a multi-stage **local RAG and multi-LLM orchestration** pipelin
 
 2. **Local Vector RAG Retrieval — `all-MiniLM-L6-v2`:** Searches a local vector index of curated AWS Reference Architectures using semantic similarity and requirement-coverage scoring.
 
-3. **Reference Analysis & Decision Grounding:** Analyzes retrieved architectures, extracts relevant architectural patterns, and determines grounding strength.
+3. **Reference Analysis, Topology Extraction & Decision Grounding:** Analyzes retrieved architectures, extracts reference topology connections, and determines grounding strength (using a `0.82` threshold for strict vs. loose topology enforcement).
 
-4. **Guardrail Service Selection — Meta Llama 3-70B:** Uses the structured requirements and retrieved architectural evidence to select appropriate AWS services.
+4. **Guardrail Service Selection & Topology Definition — Meta Llama 3-70B:** Uses structured requirements and retrieved architectural evidence to select AWS services and generate an explicit `## Architecture Topology` sequence.
 
-5. **JSON Assembly & Mermaid Generation:** Converts the generated service selection into structured architecture JSON and Mermaid graph representations.
+5. **JSON Assembly & Mermaid Generation:** Converts service selections and topology into structured architecture JSON with explicit `topology_edges`, rendering topology-grounded Mermaid graph skeletons.
 
 6. **Consistency Validation & LLM Correction:** Validates service selections, roles, data flows, and Mermaid representations. Semantic inconsistencies can be sent back to the LLM for correction, with up to two correction attempts.
 
@@ -249,4 +250,3 @@ Crafted with passion by the ArchitectAI Team:
 <div align="center">
   <p>Built under the <b>MIT License</b>.</p>
 </div>
-```

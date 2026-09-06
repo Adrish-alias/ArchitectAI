@@ -66,6 +66,18 @@ OUTPUT FORMAT — plain text:
 ## Architectural Decisions & Grounding
 - [Requirement]: <specific user requirement> -> Grounded Pattern: <pattern name> -> Source Reference: <source reference name [ID] OR LLM-Derived Pattern> -> Architectural Decision: <explicit architectural decision> -> Implementation: <how selected services implement it>
 
+## Architecture Topology
+(REQUIRED handoff section to next pipeline stage: list the service-to-service edges adopted for this architecture)
+- [Source Node] -> [Target Node]: <Reasoning for edge inclusion or adaptation>
+(Rules for Architecture Topology:
+ - List the important service-to-service relationships used by the proposed architecture.
+ - When a HIGH CONFIDENCE RAG reference is present, preserve its relevant topology unless it conflicts with an explicit user requirement.
+ - When the RAG reference is LOW CONFIDENCE, use its topology only as inspiration.
+ - Do not claim that a topology was retrieved if it was not present in the retrieved reference.
+ - The topology must correspond to the actual services selected in ## Selected AWS Services.
+ - Do not add unnecessary services merely to reproduce a reference topology.
+ - This section is REQUIRED even when the architecture is primarily LLM-derived.)
+
 ## Selected AWS Services
 (repeat the block below for each service, no numbering)
 
@@ -121,16 +133,32 @@ function buildRagContextBlock(ragInput) {
 
   const refsBlock = results.map((result, i) => {
     const arch = result.architecture;
+    const isHighConfidence = (result.finalScore >= 0.82);
+    const confidenceLabel  = isHighConfidence
+      ? "[STRICT ENFORCEMENT - HIGH CONFIDENCE MATCH]"
+      : "[LOOSE REFERENCE - ADAPT AS NEEDED]";
 
     const services = (arch.services || [])
       .map(s => `  - ${s.name}: ${s.role || ""}`)
       .join("\n");
+
+    const connections = (arch.connections || [])
+      .map(c => `  - ${c.from || c.source} -> ${c.to || c.target}: ${c.relationship || c.rel || "connected"}`)
+      .join("\n");
+
+    const connectionsBlock = connections.length > 0
+      ? connections
+      : "  - (None specified)";
 
     return `
 --- Reference ${i + 1}: ${arch.name} ---
 ID: ${arch.id}
 Category: ${arch.category}
 Relevance Score: ${result.finalScore.toFixed(3)}
+Confidence Label: ${confidenceLabel}
+
+Retrieved Architecture Topology Connections:
+${connectionsBlock}
 
 Relevant AWS Services & Roles:
 ${services}
@@ -166,10 +194,20 @@ ${groundedBlock}
 LLM-DERIVED ARCHITECTURAL DECISIONS (Model-derived without retrieved reference evidence):
 ${llmDerivedBlock}
 
-CRITICAL TRACEABILITY RULES FOR ## Architectural Decisions & Grounding:
-1. ONLY label a decision as "Grounded Pattern: <Pattern>" if it is listed above under GROUNDED ARCHITECTURAL DECISIONS with a valid Source Reference ID.
-2. If a decision is listed under LLM-DERIVED ARCHITECTURAL DECISIONS (or unsupported by retrieved references), label it as "LLM-Derived Pattern: <Pattern>" and DO NOT claim that a reference architecture grounded it.
-3. Do not make false attributions or invent non-existent connections to retrieved references.
+CRITICAL TOPOLOGY & GROUNDING RULES:
+1. For HIGH CONFIDENCE MATCH references (finalScore >= 0.82):
+   - Treat the retrieved topology as the default architectural skeleton.
+   - Preserve the retrieved service-to-service relationships unless doing so would directly conflict with an explicit user requirement or would introduce an unnecessary/inapplicable component.
+   - Do NOT blindly copy irrelevant components.
+   - Do NOT invent additional retrieved connections.
+   - If adapting the topology is necessary, explain the adaptation.
+2. For LOW CONFIDENCE references (finalScore < 0.82):
+   - Treat the topology only as architectural inspiration.
+   - Adapt it freely to the user's requirements.
+   - Do not force the reference topology into the final architecture.
+3. ONLY label a decision as "Grounded Pattern: <Pattern>" if it is listed above under GROUNDED ARCHITECTURAL DECISIONS with a valid Source Reference ID.
+4. If a decision is listed under LLM-DERIVED ARCHITECTURAL DECISIONS (or unsupported by retrieved references), label it as "LLM-Derived Pattern: <Pattern>" and DO NOT claim that a reference architecture grounded it.
+5. Do not make false attributions or invent non-existent connections to retrieved references.
 </aws_reference_architectures>
 `;
 }
