@@ -1,4 +1,4 @@
-const { callLlama } = require("./llama.service");
+const { callLLM } = require("./llm/llm.service");
 const { refineArchitecture } = require("./gemini.service");
 const { safeParse, attemptJsonRecovery } = require("./json.service");
 const { buildArchitectureMermaid, sanitizeMermaid } = require("./mermaid.service");
@@ -33,18 +33,15 @@ const {
 /**
  * Run the full 5-step architecture generation pipeline.
  *
- * @param {{ idea: string, users: string, budget?: string, features?: string[], tier?: string }} params
+ * @param {{ idea: string, users: string, budget?: string, features?: string[] }} params
  * @returns {Promise<object>} finalData — the frontend-facing architecture JSON
  */
-async function generateArchitecture({ idea, users, budget, features, tier }) {
-  // Tier validation
-  const archTier = ["cost", "balanced", "performance"].includes(tier) ? tier : "balanced";
-
+async function generateArchitecture({ idea, users, budget, features }) {
   // ─── STEP 1: Scale & Complexity Classifier ──────────────────────────────
-  const step1System = buildClassificationSystemPrompt({ tier: archTier });
+  const step1System = buildClassificationSystemPrompt();
   const step1User   = buildClassificationUserPrompt({ idea, users, budget, features });
 
-  const analysis = await callLlama(step1System, step1User, 300);
+  const analysis = await callLLM(step1System, step1User, 300);
   console.log("STEP 1:\n", analysis);
 
   // ─── RAG RETRIEVAL ────────────────────────────────────────────────────────
@@ -55,7 +52,6 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
       users,
       budget,
       features,
-      tier: archTier,
       classificationText: analysis
     });
 
@@ -68,10 +64,10 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   }
 
   // ─── STEP 2: Service Selection ───────────────────────────────────────────
-  const step2System = buildServiceSelectionSystemPrompt({ tier: archTier });
+  const step2System = buildServiceSelectionSystemPrompt();
   const step2User   = buildServiceSelectionUserPrompt({ analysis, idea, features, users, budget, ragResults });
 
-  const serviceStack = await callLlama(step2System, step2User, 1500);
+  const serviceStack = await callLLM(step2System, step2User, 1500);
   console.log("STEP 2:\n", serviceStack);
 
   const step2TopologyMatch = serviceStack.match(/## Architecture Topology\s*([\s\S]*?)(?=## Selected AWS Services|$)/i);
@@ -79,10 +75,10 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   console.log("[PIPELINE HANDOFF Step 2 -> Step 3] Extracted Step 2 Architecture Topology:\n", step2TopologyText);
 
   // ─── STEP 3: JSON Assembly ───────────────────────────────────────────────
-  const step3System = buildArchitectureJsonSystemPrompt({ tier: archTier });
+  const step3System = buildArchitectureJsonSystemPrompt();
   const step3User   = buildArchitectureJsonUserPrompt({ analysis, serviceStack, idea, users, budget });
 
-  const jsonRaw = await callLlama(step3System, step3User, 3500);
+  const jsonRaw = await callLLM(step3System, step3User, 3500);
 
   let parsed = safeParse(jsonRaw);
 
@@ -103,9 +99,8 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   parsed.architecture_overview.topology_edges = parsed.architecture_overview.topology_edges || [];
   parsed.cost_breakdown        = parsed.cost_breakdown        || {};
   parsed.implementation_steps  = parsed.implementation_steps  || [];
-  parsed.tier                  = archTier;
 
-  console.log(`STEP 3 OK [${archTier}]. Services:`, parsed.aws_services.map(s => s.name));
+  console.log(`STEP 3 OK. Services:`, parsed.aws_services.map(s => s.name));
   console.log(`[PIPELINE HANDOFF Step 3 -> Step 4] Parsed topology_edges (${parsed.architecture_overview.topology_edges.length} edges):`, JSON.stringify(parsed.architecture_overview.topology_edges, null, 2));
 
   if (ragResults && ragResults.referenceAnalysis?.topScore >= 0.82 && parsed.architecture_overview.topology_edges.length === 0) {
@@ -115,7 +110,7 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
   // ─── STEP 4: Mermaid Diagram Generator ──────────────────────────────────
   const preBuildDiagram = buildArchitectureMermaid(parsed);
   const step4User = buildMermaidValidationUserPrompt({ diagram: preBuildDiagram });
-  const rawMermaid = await callLlama(step4System, step4User, 1200);
+  const rawMermaid = await callLLM(step4System, step4User, 1200);
   parsed.mermaid = sanitizeMermaid(rawMermaid);
 
   if (!parsed.mermaid.startsWith("graph")) {
@@ -140,17 +135,16 @@ async function generateArchitecture({ idea, users, budget, features, tier }) {
       console.log(`VALIDATION: CORRECTION_ATTEMPT_${attempt}`);
 
       try {
-        const corrSystem = buildArchitectureCorrectionSystemPrompt({ tier: archTier });
+        const corrSystem = buildArchitectureCorrectionSystemPrompt();
         const corrUser   = buildArchitectureCorrectionUserPrompt({
           currentArchitecture: parsed,
           semanticFindings: validationReport.semanticFindings
         });
 
-        const rawCorr = await callLlama(corrSystem, corrUser, 3500);
+        const rawCorr = await callLLM(corrSystem, corrUser, 3500);
         const parsedCorr = safeParse(rawCorr) || attemptJsonRecovery(rawCorr);
 
         if (parsedCorr && Array.isArray(parsedCorr.aws_services)) {
-          parsedCorr.tier = archTier;
           if (!parsedCorr.mermaid || !parsedCorr.mermaid.startsWith("graph")) {
             parsedCorr.mermaid = sanitizeMermaid(buildArchitectureMermaid(parsedCorr));
           } else {

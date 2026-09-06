@@ -27,7 +27,7 @@ body {
   font-family: 'Outfit', sans-serif;
   font-weight: 300;
   overflow-x: hidden;
-  cursor: none;
+  cursor: pointer;
 }
 body::after {
   content: '';
@@ -38,17 +38,9 @@ body::after {
   z-index: 900;
 }
 
-/* ── Custom Cursor ── */
-#cur {
-  position: fixed; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--cyan); pointer-events: none; z-index: 999999;
-  transform: translate(-50%, -50%); mix-blend-mode: screen;
-}
-#cur2 {
-  position: fixed; width: 32px; height: 32px; border-radius: 50%;
-  border: 1px solid rgba(0,240,180,.3); pointer-events: none; z-index: 999998;
-  transform: translate(-50%, -50%); transition: left .12s ease, top .12s ease;
-}
+
+
+
 
 /* ── Navigation ── */
 nav {
@@ -67,7 +59,7 @@ nav {
 .nav-links { display: flex; align-items: center; gap: 36px; }
 .nav-links a {
   color: var(--muted2); text-decoration: none; font-size: .78rem;
-  letter-spacing: .07em; text-transform: uppercase; transition: color .2s; cursor: none;
+  letter-spacing: .07em; text-transform: uppercase; transition: color .2s; cursor: pointer;
 }
 .nav-links a:hover { color: var(--text); }
 .nav-cta {
@@ -80,7 +72,7 @@ nav {
 .nav-right { display: flex; align-items: center; gap: 12px; }
 .nbtn {
   font-family: 'JetBrains Mono', monospace; font-size: .65rem; padding: 7px 16px;
-  border-radius: 6px; cursor: none; transition: all .2s; text-decoration: none;
+  border-radius: 6px; cursor: pointer; transition: all .2s; text-decoration: none;
   border: 1px solid var(--border); color: var(--muted2); background: transparent;
 }
 .nbtn:hover { border-color: rgba(0,240,180,.3); color: var(--text); }
@@ -221,7 +213,7 @@ nav {
 .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .fcheck {
   display: flex; align-items: center; gap: 8px;
-  color: var(--muted2); font-size: .78rem; cursor: none;
+  color: var(--muted2); font-size: .78rem; cursor: pointer;
   padding: 5px 7px; border-radius: 6px;
   border: 1px solid transparent; transition: all .18s;
 }
@@ -232,7 +224,7 @@ nav {
 .fcheck input[type=checkbox] {
   appearance: none; width: 14px; height: 14px;
   border: 1px solid rgba(0,240,180,.25); border-radius: 3px;
-  background: rgba(0,0,0,.3); cursor: none; flex-shrink: 0;
+  background: rgba(0,0,0,.3); cursor: pointer; flex-shrink: 0;
   transition: all .15s; position: relative;
 }
 .fcheck input[type=checkbox]:checked {
@@ -248,7 +240,7 @@ nav {
   background: rgba(0,240,180,.08); border: 1px solid rgba(0,240,180,.2);
   color: var(--cyan); padding: 8px 14px; border-radius: 7px;
   font-family: 'JetBrains Mono', monospace; font-size: .7rem;
-  cursor: none; transition: all .18s; white-space: nowrap;
+  cursor: pointer; transition: all .18s; white-space: nowrap;
 }
 .add-feat-btn:hover { background: rgba(0,240,180,.15); border-color: rgba(0,240,180,.4); }
 .rprog { height: 3px; background: rgba(255,255,255,.05); margin: 0 20px; border-radius: 2px; overflow: hidden; }
@@ -261,7 +253,7 @@ nav {
   background: linear-gradient(110deg, var(--cyan), var(--blue));
   color: #000; border: none; padding: 15px; border-radius: 10px;
   font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
-  letter-spacing: .1em; cursor: none; transition: all .25s;
+  letter-spacing: .1em; cursor: pointer; transition: all .25s;
   overflow: hidden; position: relative;
 }
 .rbtn::before {
@@ -349,7 +341,7 @@ nav {
   background: rgba(255,61,170,.08); border: 1px solid rgba(255,61,170,.2);
   color: var(--magenta); padding: 12px; border-radius: 8px;
   font-family: 'Bebas Neue', sans-serif; font-size: .9rem;
-  letter-spacing: .1em; cursor: none; transition: all .2s;
+  letter-spacing: .1em; cursor: pointer; transition: all .2s;
 }
 .retry-btn:hover { background: rgba(255,61,170,.15); }
 
@@ -457,7 +449,7 @@ nav {
   border: 1px solid rgba(61,127,255,.2); color: #80aaff;
   border-radius: 9px; font-family: 'Bebas Neue', sans-serif;
   font-size: .9rem; letter-spacing: .1em; text-align: center;
-  text-decoration: none; cursor: none; transition: all .22s;
+  text-decoration: none; cursor: pointer; transition: all .22s;
 }
 .open-full-btn:hover {
   background: rgba(61,127,255,.18); border-color: rgba(61,127,255,.45);
@@ -493,7 +485,7 @@ nav {
 .step-card {
   background: var(--card); border: 1px solid var(--border);
   border-radius: 14px; padding: 24px 20px;
-  position: relative; overflow: hidden; transition: all .3s; cursor: none;
+  position: relative; overflow: hidden; transition: all .3s; cursor: pointer;
 }
 .step-card::after {
   content: ''; position: absolute; bottom: 0; inset-inline: 0;
@@ -602,7 +594,7 @@ footer {
 .diagram-actions { margin-left: auto; display: flex; gap: 8px; }
 .dact-btn {
   font-family: 'JetBrains Mono', monospace; font-size: .6rem;
-  padding: 5px 12px; border-radius: 5px; cursor: none;
+  padding: 5px 12px; border-radius: 5px; cursor: pointer;
   border: 1px solid var(--border); color: var(--muted2);
   background: transparent; transition: all .18s;
 }
@@ -727,7 +719,7 @@ footer {
 .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border); }
 .tab {
   font-family: 'JetBrains Mono', monospace; font-size: .65rem;
-  padding: 10px 18px; cursor: none; color: var(--muted2);
+  padding: 10px 18px; cursor: pointer; color: var(--muted2);
   border-bottom: 2px solid transparent; transition: all .18s;
   letter-spacing: .04em; background: transparent;
   border-top: none; border-left: none; border-right: none;
@@ -789,7 +781,7 @@ footer {
   background: linear-gradient(110deg, var(--cyan), var(--blue));
   color: #000; padding: 13px 32px; border-radius: 8px;
   font-family: 'Bebas Neue', sans-serif; font-size: .9rem;
-  letter-spacing: .1em; text-decoration: none; cursor: none;
+  letter-spacing: .1em; text-decoration: none; cursor: pointer;
   transition: all .25s; margin-top: 4px;
 }
 .go-back-btn:hover { box-shadow: 0 0 40px rgba(0,240,180,.3); transform: translateY(-2px); }
@@ -1530,7 +1522,7 @@ footer {
 .sample-btn {
   float: right;
   font-family: 'JetBrains Mono', monospace; font-size: .58rem;
-  padding: 2px 8px; border-radius: 4px; cursor: none;
+  padding: 2px 8px; border-radius: 4px; cursor: pointer;
   background: rgba(255,61,170,.08); border: 1px solid rgba(255,61,170,.18);
   color: var(--magenta); transition: all .18s;
   text-transform: none; letter-spacing: normal;
@@ -1546,7 +1538,7 @@ footer {
   overflow: hidden; margin-bottom: 0;
 }
 .analyse-tab {
-  flex: 1; padding: 13px 14px; cursor: none;
+  flex: 1; padding: 13px 14px; cursor: pointer;
   font-family: 'JetBrains Mono', monospace; font-size: .65rem;
   color: var(--muted2); background: transparent;
   border: none; border-bottom: 2px solid transparent;
@@ -1797,7 +1789,7 @@ footer {
 .tc-stat { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-bottom: 8px; }
 .tc-desc { font-size: 0.8rem; color: var(--muted2); line-height: 1.6; }
 .tc-btn {
-  display: block; text-align: center; text-decoration: none; padding: 10px; cursor: none;
+  display: block; text-align: center; text-decoration: none; padding: 10px; cursor: pointer;
   border: 1px solid var(--border); border-radius: 6px; font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem; background: rgba(0,0,0,0.2); transition: all 0.2s; margin-top: auto;
 }
@@ -1816,7 +1808,7 @@ footer {
 .tier-tab {
   background: transparent; border: 1px solid transparent; color: var(--muted2);
   padding: 6px 14px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem; cursor: none; transition: all 0.2s;
+  font-size: 0.65rem; cursor: pointer; transition: all 0.2s;
 }
 .tier-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
 .tier-tab.active { background: var(--card); color: var(--text); border-color: rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -1969,7 +1961,7 @@ footer {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1rem;
   letter-spacing: .1em;
-  cursor: none;
+  cursor: pointer;
   transition: all .28s;
   border: none;
   position: relative;

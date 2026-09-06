@@ -10,7 +10,7 @@
  * to ensure 100% reliability.
  */
 
-const { callLlama } = require("../services/llama.service");
+const { callLLM } = require("../services/llm/llm.service");
 const { safeParse, attemptJsonRecovery } = require("../services/json.service");
 
 const SYSTEM_PROMPT = `
@@ -67,7 +67,7 @@ ${classificationText || "not provided"}
 `;
 
   try {
-    const rawOutput = await callLlama(SYSTEM_PROMPT, userPrompt, 800);
+    const rawOutput = await callLLM(SYSTEM_PROMPT, userPrompt, 800);
     let profile = safeParse(rawOutput);
 
     if (!profile) {

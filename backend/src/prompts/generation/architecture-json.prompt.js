@@ -1,97 +1,15 @@
-/* =========================
-   Generation Step 3 — Structured Architecture JSON Assembly
-========================= */
-
-const TIER_STEP3 = {
-  cost: `
-
-TIER: COST-EFFICIENT
-COST RULES:
-- Total monthly estimate MUST be between $15 and $200/month for most apps.
-- Use AWS Free Tier pricing where applicable (Lambda: 1M free requests, DynamoDB: 25 WCU/RCU free, S3: 5GB free, Cognito: 50k MAU free).
-- Every per_service cost MUST reflect the cheapest configuration.
-- cost_notes MUST include: "Leverages AWS Free Tier extensively. Costs shown are for usage beyond free tier allocations."
-- Add "tier": "cost" to root JSON.
-- scale_analysis MUST mention this is optimized for minimal operational cost.
-- architecture_overview.strategy MUST emphasize cost minimization and serverless simplicity.
-- DO NOT pad costs — if a service is free tier eligible, show "$0 – $5" not "$50 – $100".
-
-COST EXAMPLES (calibrate from these):
-  Lambda 1M requests/mo: $0.20 (beyond free tier)
-  DynamoDB 1M reads/mo: $0.25
-  API Gateway HTTP API 1M calls: $1.00
-  S3 10GB storage: $0.23
-  Cognito 1k MAU: $0 (free tier)
-  CloudWatch basic: $0 (free tier)`,
-
-  balanced: `
-
-TIER: BALANCED
-COST RULES:
-- Total monthly estimate MUST be between $200 and $2,500/month for most apps.
-- Use standard pricing — not free tier, not premium reserved.
-- per_service costs should reflect moderate production usage.
-- cost_notes MUST include specific cost optimization tips.
-- Add "tier": "balanced" to root JSON.
-- scale_analysis MUST describe this as right-sized for production.
-- architecture_overview.strategy MUST balance cost vs performance.
-- Each service cost should reflect realistic production workloads.
-
-COST EXAMPLES (calibrate from these):
-  Lambda 10M requests/mo: $20
-  DynamoDB provisioned 50 WCU/RCU: $35/mo
-  API Gateway REST 10M calls: $35
-  ECS Fargate 2 tasks (0.5vCPU, 1GB): $35/mo
-  S3 100GB + transfers: $5
-  SQS 5M messages: $2
-  CloudFront 100GB transfer: $8.50
-  ElastiCache t3.micro: $12/mo`,
-
-  performance: `
-
-TIER: HIGH-PERFORMANCE / ENTERPRISE
-COST RULES:
-- Total monthly estimate MUST be between $2,000 and $25,000/month for most apps.
-- Use production/enterprise pricing with multi-AZ and redundancy.
-- per_service costs MUST reflect enterprise-grade configurations.
-- cost_notes MUST include: "Includes multi-AZ redundancy, auto-scaling headroom, and enterprise support costs."
-- Add "tier": "performance" to root JSON.
-- scale_analysis MUST describe enterprise-grade requirements and 99.99% uptime target.
-- architecture_overview.strategy MUST emphasize fault tolerance, global distribution, and observability.
-- Include reserved instance pricing notes where applicable.
-
-COST EXAMPLES (calibrate from these):
-  ECS Fargate 4 tasks Multi-AZ (1vCPU, 2GB): $145/mo
-  ElastiCache r6g.large Multi-AZ: $190/mo
-  CloudFront 1TB transfer: $85
-  WAF with managed rules: $30/mo
-  DynamoDB provisioned 200 WCU/RCU reserved: $100/mo
-  SQS 50M messages + DLQ: $20
-  CloudWatch full observability: $50/mo
-  OpenSearch 3-node cluster: $350/mo
-  S3 1TB cross-region: $25/mo
-  Lambda 50M worker invocations: $100/mo
-  Route 53 health checks + DNS: $15/mo`
-};
-
 /**
  * Build the Step 3 system prompt.
- * @param {{ tier: string }} params
  * @returns {string}
  */
-function buildArchitectureJsonSystemPrompt({ tier }) {
-  const archTier = ["cost", "balanced", "performance"].includes(tier) ? tier : "balanced";
-  const tierLabel = archTier === "cost" ? "Cost-Efficient" : archTier === "balanced" ? "Balanced" : "High-Performance";
+function buildArchitectureJsonSystemPrompt() {
 
   return `
 You output ONLY a single valid JSON object. No markdown. No backticks. No comments. No text outside the JSON.
 
 PRODUCE THIS EXACT SCHEMA — fill every field:
 {
-  "tier": "${archTier}",
-  "tier_label": "${tierLabel}",
-  "tier_description": "1-2 sentences explaining what this tier optimizes for and who it is best suited for",
-  "scale_analysis": "2-3 sentences: scale tier, key drivers, and why this tier is appropriate",
+  "scale_analysis": "2-3 sentences: scale tier, key drivers, and why this architecture is appropriate for the user's budget and scale",
   "architecture_overview": {
     "strategy": "3-4 sentences of overall design rationale specific to this tier's approach",
     "pattern": "e.g. Serverless Monolith, Event-Driven Microservices, Distributed Multi-AZ Enterprise",
@@ -160,8 +78,12 @@ SERVICE JUSTIFICATION RULES:
 - Justifications MUST be requirement-specific and explain why THAT service is needed for THIS architecture.
 - Avoid generic phrases such as "Chosen because AWS Lambda is scalable", "Chosen because DynamoDB is highly available", or "Required for the application".
 - Do NOT overstate technical guarantees (e.g., do NOT claim "DynamoDB provides isolated tenant data" — instead say "DynamoDB implements the tenant data model, with tenant-aware authorization/data-access controls enforcing isolation"; do NOT claim "Cognito provides tenant isolation" — instead say "Cognito provides user authentication and issues JWT tokens containing tenant identity claims; application authorization layers enforce isolation").
-- For RAG-grounded services, explain the architectural decision that caused the service to be selected without claiming unsupported decisions.
-${TIER_STEP3[archTier]}
+DYNAMIC COST RULES:
+- Adjust pricing estimates realistically based on the user's explicit budget and expected users/scale.
+- If the project is low-budget/free-tier focused, leverage AWS Free Tier extensively (Lambda: 1M free requests, DynamoDB: 25 WCU free). Show $0-$5 for free-tier eligible services.
+- If the project is standard production, reflect moderate usage costs (e.g. $200-$2,500/month).
+- If the project is enterprise/high-scale, reflect multi-AZ redundancy and provisioned capacity (e.g. $2,000-$25,000/month).
+- cost_notes MUST explain the primary cost drivers and optimization strategies based on the selected scale.
 `;
 }
 
@@ -185,7 +107,6 @@ Users: ${users}, Budget: ${budget || "not specified"}
 }
 
 module.exports = {
-  TIER_STEP3,
   buildArchitectureJsonSystemPrompt,
   buildArchitectureJsonUserPrompt
 };

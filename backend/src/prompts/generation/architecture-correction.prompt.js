@@ -2,16 +2,11 @@
    Generation Step 4.5 — Architecture Correction Prompt
 ========================= */
 
-const { TIER_STEP3 } = require("./architecture-json.prompt");
-
 /**
  * Build system prompt for architecture correction pass.
- * @param {{ tier: string }} params
  * @returns {string}
  */
-function buildArchitectureCorrectionSystemPrompt({ tier }) {
-  const archTier = ["cost", "balanced", "performance"].includes(tier) ? tier : "balanced";
-  const tierLabel = archTier === "cost" ? "Cost-Efficient" : archTier === "balanced" ? "Balanced" : "High-Performance";
+function buildArchitectureCorrectionSystemPrompt() {
 
   return `
 You are a Principal AWS Solutions Architect.
@@ -30,9 +25,6 @@ STRICT CORRECTION RULES:
 
 PRODUCE THIS EXACT SCHEMA — fill every field:
 {
-  "tier": "${archTier}",
-  "tier_label": "${tierLabel}",
-  "tier_description": "1-2 sentences explaining what this tier optimizes for",
   "scale_analysis": "2-3 sentences: scale tier and key drivers",
   "architecture_overview": {
     "strategy": "3-4 sentences of overall design rationale",

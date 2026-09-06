@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import CustomCursor from './components/CustomCursor';
+
 import Navbar from './components/Navbar';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
@@ -10,7 +10,7 @@ import './App.css';
 export default function App() {
   return (
     <BrowserRouter>
-      <CustomCursor />
+
       <Routes>
         {/* Landing page — no navbar, full-screen shader hero */}
         <Route path="/" element={<LandingPage />} />

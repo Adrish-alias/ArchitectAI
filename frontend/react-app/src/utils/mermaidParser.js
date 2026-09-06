@@ -38,9 +38,9 @@ export function parseMermaidToFlow(mermaidStr) {
       continue;
     }
 
-    // Edge: A -->|"label"| B  or  A --> B  or  A -->|label| B
+    // Edge: A -->|"label"| B  or  A["Label"] --> B
     const edgeMatch = line.match(
-      /^(\w+)\s*(-+>|=+>|-.->|--+>)\s*(?:\|"?([^"|]*)"?\|\s*)?(\w+)\s*$/
+      /^(\w+)(?:\[[^\]]+\]|"[^"]+"|{[^}]+}|\([^)]+\))?\s*(-+>|=+>|-.->|--+>)\s*(?:\|"?([^"|]*)"?\|\s*)?(\w+)(?:\[[^\]]+\]|"[^"]+"|{[^}]+}|\([^)]+\))?\s*$/
     );
     if (edgeMatch) {
       const [, source, , label, target] = edgeMatch;

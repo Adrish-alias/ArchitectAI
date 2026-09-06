@@ -1,40 +1,8 @@
-/* =========================
-   Generation Step 2 — AWS Service Selection
-========================= */
-
-const TIER_STEP2 = {
-  cost: `
-
-TIER CONSTRAINT: COST-EFFICIENT — MINIMAL & BUDGET-CONSCIOUS
-- Goal: Minimize operational and infrastructure costs while satisfying core functional requirements.
-- Target Service Count: Approximately 4-6 services.
-- Architectural Preference: Serverless, pay-per-invocation, managed services (e.g. AWS Lambda, DynamoDB On-Demand, API Gateway HTTP API, S3 Standard-IA).
-- Guidance: Avoid unnecessary infrastructure complexity, dedicated servers, or high baseline fixed-cost services unless explicitly justified by requirements or retrieved references.`,
-
-  balanced: `
-
-TIER CONSTRAINT: BALANCED — STANDARD PRODUCTION ARCHITECTURE
-- Goal: Balance cost-efficiency, production readiness, maintainability, and operational simplicity.
-- Target Service Count: Approximately 6-8 services.
-- Architectural Preference: Serverless and managed container services (e.g. AWS Lambda, Amazon ECS Fargate, DynamoDB, Aurora/RDS, API Gateway, SQS, CloudFront).
-- Guidance: Evaluate retrieved architecture patterns and user requirements. Include security (e.g. AWS WAF), caching, CDN, or database options if justified by requirements or retrieved evidence. Avoid gratuitous over-engineering.`,
-
-  performance: `
-
-TIER CONSTRAINT: HIGH-PERFORMANCE — ENTERPRISE GRADE ARCHITECTURE
-- Goal: Maximum resilience, high throughput, low latency, advanced security, and comprehensive observability.
-- Target Service Count: Approximately 8-12+ services.
-- Architectural Preference: Multi-AZ container orchestration (ECS/EKS) or high-throughput serverless, dedicated caching (ElastiCache), edge protection (CloudFront + WAF), distributed queuing (SQS/Kinesis), and full-stack monitoring.
-- Guidance: Prioritize fault tolerance, disaster recovery, security, and high-availability patterns derived from user requirements and retrieved reference architectures.`
-};
-
 /**
  * Build the Step 2 system prompt.
- * @param {{ tier: string }} params
  * @returns {string}
  */
-function buildServiceSelectionSystemPrompt({ tier }) {
-  const archTier = ["cost", "balanced", "performance"].includes(tier) ? tier : "balanced";
+function buildServiceSelectionSystemPrompt() {
   return `
 You are a Principal AWS Solutions Architect.
 Select ONLY the AWS services this system actually needs based on user requirements, workload constraints, and retrieved architectural evidence. Output feeds directly into a JSON builder.
@@ -49,6 +17,11 @@ WORKLOAD & ARCHITECTURAL CONSIDERATIONS (GUARDRAILS):
 - Data Storage & Search: Choose database and search engines (DynamoDB, Aurora, RDS, OpenSearch) based on data complexity, query patterns, and retrieved architecture patterns.
 - Edge & Content Distribution: Include Amazon S3 and Amazon CloudFront when user requirements or retrieved references call for static web hosting or CDN edge caching.
 - Security & Compliance: Evaluate AWS WAF, Cognito, or IAM scoping whenever security, multi-tenancy, or edge protection is required or supported by retrieved references.
+
+DYNAMIC ARCHITECTURAL STRATEGY:
+- If Budget is constrained or Scale is low: Minimize operational costs. Prefer Serverless/pay-per-invocation (e.g. Lambda, DynamoDB On-Demand). Avoid high baseline fixed-cost services. Keep service count lean (4-6 services).
+- If Scale is moderate: Balance cost-efficiency and maintainability. Consider managed containers or robust serverless. Use CDNs or WAF if justified. Target 6-8 services.
+- If Scale is high or enterprise-grade features are requested: Prioritize resilience, low latency, and security. Consider Multi-AZ containers (ECS), dedicated caching (ElastiCache), decoupled messaging (SQS/Kinesis), and edge protection (WAF+CloudFront). Target 8-12+ services.
 
 RETRIEVED ARCHITECTURAL EVIDENCE GROUNDING:
 1. Retrieved reference architectures represent real-world AWS architectural evidence, not merely background text.
@@ -85,7 +58,6 @@ SERVICE: <exact AWS service name>
 ROLE: <specific technical role in this system, including architectural pattern details like tenant-scoped partitioning or JWT claims>
 JUSTIFICATION: <which feature, scale requirement, or retrieved reference pattern forces inclusion>
 DATA_FLOW: <one sentence: what enters and what leaves>
-${TIER_STEP2[archTier]}
 `;
 }
 
@@ -213,7 +185,6 @@ CRITICAL TOPOLOGY & GROUNDING RULES:
 }
 
 module.exports = {
-  TIER_STEP2,
   buildServiceSelectionSystemPrompt,
   buildServiceSelectionUserPrompt
 };

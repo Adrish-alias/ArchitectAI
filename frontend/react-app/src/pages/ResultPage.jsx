@@ -1,62 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ArchitectureDiagram from '../components/ArchitectureDiagram';
 import { getServiceIcon, parseCostNum } from '../utils/serviceHelpers';
-import ComparisonMatrix from '../components/ComparisonMatrix';
 
 const COST_COLORS = [
   'var(--cyan)', '#80aaff', 'var(--magenta)', 'var(--gold)',
   '#7ddd9a', '#b0b0ff', '#ffaa30', '#ff80cc',
 ];
 
-const TIER_META = {
-  cost: { icon: '💰', label: 'Cost-Efficient', color: 'var(--cyan)', accent: 'rgba(0,240,180', tagline: 'Minimal viable architecture at the lowest cost' },
-  balanced: { icon: '⚖️', label: 'Balanced', color: 'var(--blue)', accent: 'rgba(61,127,255', tagline: 'Right-sized for production workloads' },
-  performance: { icon: '🚀', label: 'High-Performance', color: 'var(--magenta)', accent: 'rgba(255,61,170', tagline: 'Enterprise-grade with full redundancy' },
-};
-
 export default function ResultPage() {
-  const [tiersData, setTiersData] = useState(null);
-  const [activeTier, setActiveTier] = useState('balanced');
+  const [archData, setArchData] = useState(null);
   const [activeTab, setActiveTab] = useState('diagram');
   const [rawVisible, setRawVisible] = useState(false);
   const [diagramFullscreen, setDiagramFullscreen] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tier')) setActiveTier(params.get('tier'));
-
-    const raw = localStorage.getItem('architectureDataTiered');
+    const raw = localStorage.getItem('architectureData');
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw);
-      if (parsed.tiers) setTiersData(parsed.tiers);
+      setArchData(parsed);
     } catch (e) { /* invalid data */ }
   }, []);
 
   // Animate cost bars
   useEffect(() => {
-    if (!tiersData || activeTier === 'compare') return;
+    if (!archData) return;
     const timer = setTimeout(() => {
       document.querySelectorAll('.cost-bar-fill[data-pct]').forEach(bar => {
         bar.style.width = bar.dataset.pct + '%';
       });
     }, 700);
     return () => clearTimeout(timer);
-  }, [tiersData, activeTier, activeTab]);
+  }, [archData, activeTab]);
 
   const toggleRaw = () => setRawVisible(prev => !prev);
 
   const exportJSON = () => {
-    if (!tiersData) { alert('No data to export.'); return; }
-    const blob = new Blob([JSON.stringify(tiersData, null, 2)], { type: 'application/json' });
+    if (!archData) { alert('No data to export.'); return; }
+    const blob = new Blob([JSON.stringify(archData, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'architectures.json';
+    a.download = 'architecture.json';
     a.click();
   };
 
-  if (!tiersData) {
+  if (!archData) {
     return (
       <div className="page">
         <nav>
@@ -78,9 +67,7 @@ export default function ResultPage() {
     );
   }
 
-  const isCompare = activeTier === 'compare';
-  const data = isCompare ? null : tiersData[activeTier];
-  const tm = TIER_META[activeTier] || TIER_META.balanced;
+  const data = archData;
 
   const svcs = data?.aws_services || [];
   const cb = data?.cost_breakdown || {};
@@ -101,7 +88,7 @@ export default function ResultPage() {
   const activeFlows = flowDefs.filter(f => ov[f.key] && !ov[f.key].startsWith('N/A'));
 
   // Fullscreen diagram overlay
-  if (diagramFullscreen && !isCompare) {
+  if (diagramFullscreen) {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)',
@@ -113,11 +100,11 @@ export default function ResultPage() {
           background: 'rgba(3,5,13,.85)', backdropFilter: 'blur(16px)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: '1.2rem' }}>{tm.icon}</span>
+            <span style={{ fontSize: '1.2rem' }}>⚖️</span>
             <span style={{
               fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem',
-              letterSpacing: '.06em', color: tm.color,
-            }}>{tm.label} Architecture</span>
+              letterSpacing: '.06em', color: 'var(--blue)',
+            }}>Recommended Architecture</span>
             <span style={{
               fontFamily: "'JetBrains Mono', monospace", fontSize: '.6rem',
               color: 'var(--muted)', background: 'rgba(255,255,255,.03)',
@@ -130,7 +117,7 @@ export default function ResultPage() {
               background: 'rgba(255,61,170,.08)', border: '1px solid rgba(255,61,170,.2)',
               color: 'var(--magenta)', padding: '8px 18px', borderRadius: 7,
               fontFamily: "'JetBrains Mono', monospace", fontSize: '.7rem',
-              cursor: 'none', transition: 'all .2s',
+              cursor: 'pointer', transition: 'all .2s',
             }}
           >✕ Exit Fullscreen</button>
         </div>
@@ -146,58 +133,30 @@ export default function ResultPage() {
       {/* Nav */}
       <nav>
         <Link to="/" className="logo" style={{ textDecoration: 'none' }}>ArchitectAI</Link>
-        <div className="nav-mid">
-          <div className="tier-tabs">
-             <button className={`tier-tab ${activeTier === 'compare' ? 'active' : ''}`} onClick={() => setActiveTier('compare')}>📊 Compare</button>
-             <button className={`tier-tab ${activeTier === 'cost' ? 'active tcost' : ''}`} onClick={() => setActiveTier('cost')}>💰 Cost-Efficient</button>
-             <button className={`tier-tab ${activeTier === 'balanced' ? 'active tbal' : ''}`} onClick={() => setActiveTier('balanced')}>⚖️ Balanced</button>
-             <button className={`tier-tab ${activeTier === 'performance' ? 'active tperf' : ''}`} onClick={() => setActiveTier('performance')}>🚀 High-Performance</button>
-          </div>
+        <div className="nav-mid" style={{
+          fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem',
+          letterSpacing: '.06em', color: 'var(--text)'
+        }}>
+          RECOMMENDED ARCHITECTURE
         </div>
         <div className="nav-right">
-          {!isCompare && <button className="nbtn" onClick={toggleRaw}>⟨/⟩ Raw</button>}
+          <button className="nbtn" onClick={toggleRaw}>⟨/⟩ Raw</button>
           <button className="nbtn" onClick={exportJSON}>↓ Export</button>
           <Link to="/" className="nbtn primary">← Back</Link>
         </div>
       </nav>
 
-      {/* Compare View */}
-      {isCompare ? (
-         <div className="compare-layout" style={{ maxWidth: 1200, margin: '40px auto', padding: '0 24px' }}>
-            <h2 className="sec-title" style={{ textAlign: 'center', marginBottom: 40, letterSpacing: '0.06em' }}>ARCHITECTURE COMPARISON</h2>
-            <ComparisonMatrix tiersData={tiersData} />
-         </div>
-      ) : (
       <div className="layout">
         {/* LEFT SIDEBAR — Services & Implementation */}
         <div className="sidebar-left">
           <div style={{ paddingTop: 20 }}>
-            {/* Tier Badge */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: `${tm.accent},.06)`, border: `1px solid ${tm.accent},.15)`,
-              borderRadius: 8, padding: '10px 14px', marginBottom: 18,
-            }}>
-              <span style={{ fontSize: '1.2rem' }}>{tm.icon}</span>
-              <div>
-                <div style={{
-                  fontFamily: "'Bebas Neue', sans-serif", fontSize: '.9rem',
-                  letterSpacing: '.04em', color: tm.color,
-                }}>{tm.label}</div>
-                <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: '.55rem',
-                  color: 'var(--muted2)', letterSpacing: '.04em',
-                }}>{data?.tier_description || tm.tagline}</div>
-              </div>
-            </div>
-
             {/* Architecture Pattern */}
             {ov.pattern && (
               <div style={{
                 fontFamily: "'JetBrains Mono', monospace", fontSize: '.6rem',
-                color: tm.color, letterSpacing: '.08em', textTransform: 'uppercase',
-                marginBottom: 8, padding: '5px 10px',
-                background: `${tm.accent},.04)`, border: `1px solid ${tm.accent},.1)`,
+                color: 'var(--blue)', letterSpacing: '.08em', textTransform: 'uppercase',
+                marginBottom: 16, padding: '5px 10px',
+                background: `rgba(61,127,255,.04)`, border: `1px solid rgba(61,127,255,.1)`,
                 borderRadius: 6,
               }}>
                 ◉ {ov.pattern}
@@ -301,13 +260,13 @@ export default function ResultPage() {
 
           {/* Tabs */}
           <div className="tabs">
-            <button className={`tab ${activeTab === 'diagram' ? 'active' : ''}`} onClick={() => setActiveTab('diagram')}>
+            <button className={`tab ${activeTab === 'diagram' ? 'active' : ''}`} onClick={() => setActiveTab('diagram')} style={{ cursor: 'pointer' }}>
               Architecture Diagram
             </button>
-            <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+            <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')} style={{ cursor: 'pointer' }}>
               System Overview
             </button>
-            <button className={`tab ${activeTab === 'costs' ? 'active' : ''}`} onClick={() => setActiveTab('costs')}>
+            <button className={`tab ${activeTab === 'costs' ? 'active' : ''}`} onClick={() => setActiveTab('costs')} style={{ cursor: 'pointer' }}>
               Cost Analysis
             </button>
           </div>
@@ -315,23 +274,23 @@ export default function ResultPage() {
           {/* Diagram Tab */}
           <div className={`tab-panel ${activeTab === 'diagram' ? 'active' : ''}`}>
             <div className="section-block" style={{ marginTop: 20 }}>
-              <div className="diagram-wrap">
+              <div className="diagram-wrap" style={{ minHeight: '65vh' }}>
                 <div className="diagram-toolbar">
                   <div className="dtag">
-                    <span className="dot"></span>React Flow · Live Render · {tm.label}
+                    <span className="dot"></span>React Flow · Live Render
                   </div>
                   <div style={{ marginLeft: 'auto' }}>
                     <button
                       className="dact-btn"
                       onClick={() => setDiagramFullscreen(true)}
-                      style={{ cursor: 'none' }}
+                      style={{ cursor: 'pointer' }}
                     >
                       ⛶ Fullscreen
                     </button>
                   </div>
                 </div>
                 {!rawVisible && (
-                  <div key={activeTier} id="diagram-render" style={{ height: 600, minHeight: 600 }}>
+                  <div id="diagram-render" style={{ height: '65vh', minHeight: 600 }}>
                     <ArchitectureDiagram mermaidString={mermaidSrc} />
                   </div>
                 )}
@@ -611,7 +570,6 @@ export default function ResultPage() {
           </div>
         </div>
       </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { generateAllTiers } from '../utils/api';
+import { useState, useRef, useCallback } from 'react';
+import { generateArchitecture } from '../utils/api';
 
 const DEFAULT_FEATURES = [
   { value: 'real-time collaboration', label: 'Real-time collab', checked: false },
@@ -14,19 +14,21 @@ const DEFAULT_FEATURES = [
 
 const STEP_TIMINGS = [0, 3000, 7000, 11000, 16000];
 const STEP_LABELS = [
-  'Step 1 — Classifying scale and requirements',
-  'Step 2 — Selecting optimal AWS services',
-  'Step 3 — Assembling architecture JSON',
-  'Step 4 — Generating Mermaid diagram',
-  'Step 5 — Validating with Gemini',
+  'Step 1 — Analyzing requirements',
+  'Step 2 — Retrieving relevant AWS architectures',
+  'Step 3 — Grounding architectural decisions',
+  'Step 4 — Selecting AWS services & building topology',
+  'Step 5 — Validating architecture & estimating cost',
 ];
 
-export default function GeneratorForm({ onResult, onLoading, onError, onReset, onTierLoad }) {
+export default function GeneratorForm({ onResult, onLoading, onError, onReset }) {
   const [idea, setIdea] = useState('');
   const [users, setUsers] = useState('');
   const [budget, setBudget] = useState('');
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [customFeat, setCustomFeat] = useState('');
+  
+  const [advOpen, setAdvOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stepStates, setStepStates] = useState(Array(5).fill('idle'));
@@ -80,27 +82,24 @@ export default function GeneratorForm({ onResult, onLoading, onError, onReset, o
 
   const handleGenerate = async () => {
     if (!idea.trim()) { alert('Please describe your project idea.'); return; }
-    const usersNum = parseInt(users);
-    if (!usersNum || usersNum < 1) { alert('Please enter expected number of users.'); return; }
+    
+    // Default to some users if left blank by the user in the new UI
+    const usersNum = parseInt(users) || 10000;
 
     const selectedFeatures = features.filter(f => f.checked).map(f => f.value);
 
     setGenerating(true);
-    setButtonText('⚡ GENERATING TIERS...');
+    setButtonText('⚡ GENERATING ARCHITECTURE...');
     onLoading();
     startProgress();
     animateSteps();
 
     try {
-      const results = await generateAllTiers({
+      const architecture = await generateArchitecture({
         idea: idea.trim(),
         users: usersNum,
         budget: budget.trim() || undefined,
         features: selectedFeatures,
-      }, (tier, result) => {
-        if (result.success && onTierLoad) {
-          onTierLoad(tier, result.data);
-        }
       });
 
       stepTimersRef.current.forEach(clearTimeout);
@@ -108,15 +107,14 @@ export default function GeneratorForm({ onResult, onLoading, onError, onReset, o
       clearInterval(progressRef.current);
       setProgress(100);
 
-      const successfulTiers = {};
-      Object.keys(results).forEach(t => {
-        if (results[t].success) successfulTiers[t] = results[t].data;
-      });
+      if (!architecture) {
+        throw new Error("Failed to generate architecture.");
+      }
 
-      localStorage.setItem('architectureDataTiered', JSON.stringify({ tiers: successfulTiers }));
+      localStorage.setItem('architectureData', JSON.stringify(architecture));
 
       setTimeout(() => {
-        onResult(successfulTiers);
+        onResult(architecture);
         setButtonText('⚡ REGENERATE');
         setGenerating(false);
       }, 600);
@@ -144,80 +142,110 @@ export default function GeneratorForm({ onResult, onLoading, onError, onReset, o
 
   return {
     formPanel: (
-      <div className="pp">
+      <div className="pp" style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="pp-hd">
           <span>🚀</span>
-          <span className="pht">Project Input</span>
+          <span className="pht">Architecture Composer</span>
           <span className="phtag">Live Mode</span>
         </div>
-        <div className="pform">
-          <div className="fgroup">
-            <label className="flabel">Project Idea *</label>
+        <div className="pform" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <div className="fgroup" style={{ margin: 0 }}>
             <textarea
-              className="finput"
-              rows="3"
-              placeholder="Describe your project in plain English. e.g. A real-time collaborative code editor for remote teams, similar to VS Code Web."
+              className="finput composer-input"
+              rows="6"
+              placeholder="Describe the system you want to build... (e.g., A multi-tenant SaaS platform for 100k users. Users access a highly available web dashboard...)"
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  handleGenerate();
+                }
+              }}
+              style={{ fontSize: '1rem', lineHeight: '1.5', padding: '16px' }}
             />
           </div>
-          <div className="frow">
-            <div className="fgroup">
-              <label className="flabel">Expected Users *</label>
-              <input
-                type="number"
-                className="finput"
-                placeholder="e.g. 50000"
-                min="1"
-                value={users}
-                onChange={(e) => setUsers(e.target.value)}
-              />
-            </div>
-            <div className="fgroup">
-              <label className="flabel">Monthly Budget</label>
-              <input
-                type="text"
-                className="finput"
-                placeholder="e.g. $3,000/month"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-              />
-            </div>
+
+          <div className="adv-req-container">
+            <button 
+              className="adv-req-toggle"
+              onClick={() => setAdvOpen(!advOpen)}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--muted2)',
+                fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 0', textTransform: 'uppercase', letterSpacing: '0.05em'
+              }}
+            >
+              <span style={{ transform: advOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
+              {advOpen ? 'Hide Advanced Requirements' : 'Advanced Requirements'}
+            </button>
+            
+            {advOpen && (
+              <div className="adv-req-content" style={{ marginTop: '12px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="frow" style={{ marginBottom: '16px' }}>
+                  <div className="fgroup" style={{ margin: 0 }}>
+                    <label className="flabel">Expected Users</label>
+                    <input
+                      type="number"
+                      className="finput"
+                      placeholder="e.g. 10000"
+                      min="1"
+                      value={users}
+                      onChange={(e) => setUsers(e.target.value)}
+                    />
+                  </div>
+                  <div className="fgroup" style={{ margin: 0 }}>
+                    <label className="flabel">Monthly Budget</label>
+                    <input
+                      type="text"
+                      className="finput"
+                      placeholder="e.g. $3,000/month"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="fgroup" style={{ margin: 0 }}>
+                  <label className="flabel">Key Features</label>
+                  <div className="features-grid">
+                    {features.map((feat, i) => (
+                      <label key={i} className="fcheck" style={{ cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={feat.checked}
+                          onChange={() => toggleFeature(i)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        {' '}{feat.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="custom-feat" style={{ marginTop: 10 }}>
+                    <input
+                      type="text"
+                      className="finput"
+                      placeholder="Add custom feature..."
+                      value={customFeat}
+                      onChange={(e) => setCustomFeat(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addCustomFeature()}
+                    />
+                    <button className="add-feat-btn" onClick={addCustomFeature} style={{ cursor: 'pointer' }}>+ Add</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="fgroup">
-            <label className="flabel">Key Features</label>
-            <div className="features-grid">
-              {features.map((feat, i) => (
-                <label key={i} className="fcheck">
-                  <input
-                    type="checkbox"
-                    checked={feat.checked}
-                    onChange={() => toggleFeature(i)}
-                  />
-                  {' '}{feat.label}
-                </label>
-              ))}
-            </div>
-            <div className="custom-feat" style={{ marginTop: 10 }}>
-              <input
-                type="text"
-                className="finput"
-                placeholder="Add custom feature..."
-                value={customFeat}
-                onChange={(e) => setCustomFeat(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addCustomFeature()}
-              />
-              <button className="add-feat-btn" onClick={addCustomFeature}>+ Add</button>
-            </div>
-          </div>
+          
         </div>
-        <div className="rprog">
+        <div className="rprog" style={{ marginTop: 'auto' }}>
           <div className="rbar" style={{ width: progress + '%' }}></div>
         </div>
         <button
           className="rbtn"
           disabled={generating}
           onClick={handleGenerate}
+          style={{ cursor: generating ? 'not-allowed' : 'pointer' }}
         >
           {buttonText}
         </button>

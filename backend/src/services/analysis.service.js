@@ -1,4 +1,4 @@
-const { callLlama } = require("./llama.service");
+const { callLLM } = require("./llm/llm.service");
 const { refineAnalysis } = require("./gemini.service");
 const { safeParse, attemptJsonRecovery } = require("./json.service");
 const { buildOptimizedMermaid, sanitizeMermaid } = require("./mermaid.service");
@@ -29,13 +29,13 @@ async function analyseArchitecture({ mermaid: mermaidCode, description }) {
   // ─── ANALYSE STEP 1: Architecture Parser ──────────────────────────────────
   const a1User = buildArchitectureParserUserPrompt({ description, mermaidCode });
 
-  const archParsed = await callLlama(a1System, a1User, 1200);
+  const archParsed = await callLLM(a1System, a1User, 1200);
   console.log("ANALYSE STEP 1:\n", archParsed);
 
   // ─── ANALYSE STEP 2: Issue Detector ───────────────────────────────────────
   const a2User = buildIssueDetectorUserPrompt({ archParsed, mermaidCode, description });
 
-  const issuesRaw = await callLlama(a2System, a2User, 1800);
+  const issuesRaw = await callLLM(a2System, a2User, 1800);
   console.log("ANALYSE STEP 2 raw:\n", issuesRaw);
 
   let issues = null;
@@ -100,7 +100,7 @@ async function analyseArchitecture({ mermaid: mermaidCode, description }) {
 
   const a3User = buildOptimizationUserPrompt({ mermaidCode, description, issuesSummary, archParsed });
 
-  const a3Raw = await callLlama(a3System, a3User, 2500);
+  const a3Raw = await callLLM(a3System, a3User, 2500);
 
   let optimized = safeParse(a3Raw);
   if (!optimized) {
@@ -126,7 +126,7 @@ async function analyseArchitecture({ mermaid: mermaidCode, description }) {
   const optimizedDiagram = buildOptimizedMermaid(optimized);
 
   const a4User = buildAnalysisMermaidValidationUserPrompt({ diagram: optimizedDiagram });
-  const rawOptMermaid = await callLlama(a4System, a4User, 1200);
+  const rawOptMermaid = await callLLM(a4System, a4User, 1200);
   optimized.mermaid = sanitizeMermaid(rawOptMermaid);
 
   if (!optimized.mermaid.startsWith("graph")) {

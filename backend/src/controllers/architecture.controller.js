@@ -5,15 +5,15 @@ const { generateArchitecture } = require("../services/architecture.service");
  * Validates input, delegates to the architecture service, returns result.
  */
 async function generate(req, res) {
-  const { idea, users, budget, features, tier } = req.body;
+  const { idea, users, budget, features } = req.body;
 
   if (!idea || !users) {
     return res.status(400).json({ success: false, message: "Missing idea or users" });
   }
 
   try {
-    const finalData = await generateArchitecture({ idea, users, budget, features, tier });
-    return res.json({ success: true, data: finalData });
+    const finalData = await generateArchitecture({ idea, users, budget, features });
+    return res.json({ success: true, architecture: finalData });
   } catch (err) {
     // If the service threw a Step 3 JSON-parse failure (custom statusCode)
     if (err.statusCode === 500) {

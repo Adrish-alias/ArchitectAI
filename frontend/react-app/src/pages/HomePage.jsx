@@ -1,40 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HeroSection from '../components/HeroSection';
 import GeneratorForm from '../components/GeneratorForm';
-import OverviewPanel from '../components/OverviewPanel';
-import ServicesPanel from '../components/ServicesPanel';
-import DiagramPanel from '../components/DiagramPanel';
-import CostPanel from '../components/CostPanel';
-import ImplStepsPanel from '../components/ImplStepsPanel';
-import TierCard from '../components/TierCard';
 import HowItWorks from '../components/HowItWorks';
 import Footer from '../components/Footer';
 import { Link } from 'react-router-dom';
 
 export default function HomePage() {
-  const [state, setState] = useState('empty'); // empty | loading | error | result
-  const [resultData, setResultData] = useState({});
+  const [state, setState] = useState('empty'); // empty | loading | error
   const [errorMsg, setErrorMsg] = useState('');
   const sectionRef = useRef(null);
-  const initializedRef = useRef(false);
-
-  // Restore result data from localStorage on mount
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    const raw = localStorage.getItem('architectureDataTiered');
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed.tiers) {
-          setResultData(parsed.tiers);
-          setState('result');
-        }
-      } catch (e) {
-        // invalid data, stay in empty state
-      }
-    }
-  }, []);
+  const navigate = useNavigate();
 
   // Scroll reveal for the generator section
   useEffect(() => {
@@ -70,17 +46,12 @@ export default function HomePage() {
   }, []);
 
   const handleResult = (data) => {
-    setResultData(data);
-    setState('result');
-  };
-
-  const handleTierLoad = (tier, data) => {
-    setResultData(prev => ({ ...prev, [tier]: data }));
+    // Automatically navigate to the result page with the single architecture
+    navigate('/result');
   };
 
   const handleLoading = () => {
     setState('loading');
-    setResultData({});
   };
 
   const handleError = (msg) => {
@@ -90,9 +61,8 @@ export default function HomePage() {
 
   const handleReset = () => {
     setState('empty');
-    setResultData({});
     setErrorMsg('');
-    localStorage.removeItem('architectureDataTiered');
+    localStorage.removeItem('architectureDataSingle');
   };
 
   const { formPanel, loadingPanel, handleReset: formReset } = GeneratorForm({
@@ -100,7 +70,6 @@ export default function HomePage() {
     onLoading: handleLoading,
     onError: handleError,
     onReset: handleReset,
-    onTierLoad: handleTierLoad
   });
 
   return (
@@ -136,6 +105,7 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Error State */}
             {state === 'error' && (
               <div className="oc show">
                 <div className="och">
@@ -152,22 +122,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Results / Progressive Tiers */}
-            {(state === 'loading' || state === 'result') && (
-              <div className="tiers-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                {['cost', 'balanced', 'performance'].map((tier) => (
-                   <TierCard key={tier} tier={tier} data={resultData?.[tier]} isLoading={!resultData?.[tier]} />
-                ))}
-                
-                {state === 'result' && (
-                   <div style={{ marginTop: '12px', textAlign: 'center' }}>
-                     <Link to="/result" className="nbtn primary" style={{ padding: '12px 24px', fontSize: '1rem', display: 'inline-block' }}>
-                       View Full Tabbed Comparison →
-                     </Link>
-                   </div>
-                )}
-              </div>
-            )}
+            {/* Loading / Pipeline State */}
+            {state === 'loading' && loadingPanel}
           </div>
         </div>
       </section>
