@@ -59,6 +59,13 @@ async function runPipelineTest() {
     console.log(`  - Monthly Cost Est   : ${finalData.cost_breakdown.monthly_estimate || "N/A"}`);
     console.log(`  - Validation Status  : ${finalData.validation_status}`);
     console.log(`  - Mermaid Lines      : ${finalData.mermaid.split("\n").length}`);
+    if (finalData.pricing) {
+      console.log(`  - Pricing Status     : ${finalData.pricing.status}`);
+      if (finalData.pricing.status === "success") {
+        console.log(`  - Deterministic Cost : $${finalData.pricing.cost_breakdown?.total_monthly_cost_usd}/month`);
+        console.log(`  - Sized Services     : ${finalData.pricing.configs?.length}`);
+      }
+    }
 
     // Simulated API response wrapper
     const apiResponse = { success: true, architecture: finalData };

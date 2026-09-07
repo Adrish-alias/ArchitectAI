@@ -48,7 +48,7 @@ class BedrockProvider extends BaseLLMProvider {
    * @param {number} [params.maxTokens=1200]
    * @returns {Promise<string>}
    */
-  async generateText({ systemPrompt, userPrompt, temperature = 0.1, maxTokens = 1200 }) {
+  async generateText({ systemPrompt, userPrompt, temperature = 0.1, maxTokens = 1200, step }) {
     let command;
 
     if (isOpenAIModel(this.model)) {
@@ -100,7 +100,26 @@ class BedrockProvider extends BaseLLMProvider {
 
       let text = "";
       if (isOpenAIModel(this.model)) {
-        text = result.choices?.[0]?.message?.content || "";
+        const choice = result.choices?.[0];
+        const finishReason = choice?.finish_reason;
+        const usage = result.usage;
+
+        const stepLabel = step || (
+          maxTokens === 600 ? "Step 1: Classification" :
+          maxTokens === 1500 ? "Step 1.1 / RAG Requirement Analyzer" :
+          maxTokens === 4500 ? "Step 2: Service Selection" :
+          maxTokens === 6000 ? "Step 3: JSON Assembly" :
+          maxTokens === 1800 ? "Step 4: Mermaid Validation" :
+          maxTokens === 5000 ? "Correction Loop" :
+          "LLM Call"
+        );
+
+        console.log(`[Bedrock ${this.model}] [${stepLabel}] maxTokens: ${maxTokens} | prompt_tokens: ${usage?.prompt_tokens ?? "N/A"}, completion_tokens: ${usage?.completion_tokens ?? "N/A"}, total_tokens: ${usage?.total_tokens ?? "N/A"}, finish_reason: ${finishReason ?? "unknown"}`);
+        if (finishReason === "length") {
+          console.warn(`[Bedrock ${this.model}] [${stepLabel}] WARNING: Response truncated by token limit (finish_reason=length, completion_tokens=${usage?.completion_tokens ?? "ceiling"})!`);
+        }
+
+        text = choice?.message?.content || "";
         if (text.includes("</reasoning>")) {
           text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>\s*/i, "");
         }
@@ -191,7 +210,8 @@ class BedrockProvider extends BaseLLMProvider {
         tokenUsage = {
           promptTokens: result.usage?.prompt_tokens ?? null,
           completionTokens: result.usage?.completion_tokens ?? null,
-          totalTokens: result.usage?.total_tokens ?? null
+          totalTokens: result.usage?.total_tokens ?? null,
+          finishReason: result.choices?.[0]?.finish_reason ?? null
         };
       } else {
         text = result.generation || "";

@@ -67,7 +67,7 @@ ${classificationText || "not provided"}
 `;
 
   try {
-    const rawOutput = await callLLM(SYSTEM_PROMPT, userPrompt, 800);
+    const rawOutput = await callLLM(SYSTEM_PROMPT, userPrompt, 1500, { step: "Step 1.1 / RAG Requirement Analyzer" });
     let profile = safeParse(rawOutput);
 
     if (!profile) {

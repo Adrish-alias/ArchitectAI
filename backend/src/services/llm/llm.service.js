@@ -97,7 +97,8 @@ async function callLLM(system, user, maxLen = 1200, options = {}) {
     systemPrompt: system,
     userPrompt: user,
     temperature,
-    maxTokens: maxLen
+    maxTokens: maxLen,
+    step: options.step
   });
 }
 

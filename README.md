@@ -23,28 +23,30 @@
 
 ## 🏗️ Architecture Generation Pipeline
 
-The backend orchestrates a multi-step pipeline combining local retrieval-augmented generation (RAG) and large language model passes:
+The backend orchestrates a multi-step pipeline combining local retrieval-augmented generation (RAG), structured sizing, and deterministic cost calculation:
 
 ```text
 Natural Language Requirements
             ↓
-Step 1: Requirement Classification (LLM)
+Step 1: Requirement Classification & Scale Analysis (LLM)
             ↓
-Requirement Profile (Application type, scale, compute/data/realtime needs)
+RAG Reference Retrieval & Architectural Grounding (Local Vector Search: all-MiniLM-L6-v2)
             ↓
-Step 2: Local Vector RAG Retrieval + Reranking (all-MiniLM-L6-v2)
+Step 2: Service Selection & Topology Definition (LLM)
             ↓
-Reference Analysis, Topology Extraction & Decision Grounding
+Step 2.5: Pricing Sizing & Usage Configuration (Lightweight LLM Sizing Pass)
             ↓
-Step 3: Service Selection & Topology Definition (LLM)
+Canonical Schema Validation & Deterministic AWS Pricing Calculation (Exact Formulas)
             ↓
-Step 4: Architecture JSON Assembly & Mermaid Diagram Generation
+Step 3: Architecture JSON Assembly (LLM)
+            ↓
+Step 4: Mermaid Diagram Validation & Generation
             ↓
 Step 5: Structural Consistency Validation & LLM Correction Loop
             ↓
 Step 6: Senior Refinement Pass (Google Gemini)
             ↓
-Final Architecture Output (JSON + Topology Edges + Interactive Graph + Cost Estimate)
+Final Architecture Output (JSON + Topology Edges + Interactive Graph + Deterministic Cost Breakdown)
 ```
 
 ---
@@ -91,6 +93,14 @@ ArchitectAI features a provider-switchable LLM abstraction layer (`backend/src/s
 - Generates preliminary monthly cost ranges and per-service estimations based on scale parameters.
 - Outlines phased implementation steps from foundational networking to monitoring and deployment.
 
+### 5. Deterministic AWS Pricing Engine & Step 2.5 Integration (`backend/src/services/pricing/`)
+- **Separation of Concerns:** Large language models are leveraged strictly for qualitative reasoning and workload sizing—not for financial calculations. The LLM estimates usage metrics (e.g. invocations, storage GB, data transfer), while deterministic formulas compute dollar costs.
+- **Lightweight Sizing Stage (Step 2.5):** Immediately following service selection, a focused LLM pass generates structured sizing inputs (`pricing_config`) and explicit assumptions derived from user requirements. The prompt dynamically injects only the schemas for selected services, minimizing token overhead.
+- **Canonical Schema Enforcement:** A centralized schema registry (`pricing.schemas.js`) strictly validates all incoming configurations, rejecting missing fields, negative numbers, wrong data types, and unexpected parameters.
+- **30 Initial Supported Services:** Full domain coverage across Compute (Lambda, Fargate, EC2, EKS, App Runner), Database (DynamoDB, Aurora Serverless v2, RDS, ElastiCache, DocumentDB, Redshift Serverless), Storage (S3, EFS, EBS gp3, Glacier Deep Archive), Networking (CloudFront, API Gateway, ALB, NAT Gateway, Route 53, WAF), Integration (SQS, SNS, EventBridge, Kinesis Data Streams, Step Functions), Security (Cognito, Secrets Manager, KMS), and Analytics (Athena).
+- **Failure-Safe & Non-Breaking:** Step 2.5 is isolated in a dedicated error boundary. If sizing generation or validation fails, the architecture pipeline completes normally and returns the full architecture with `pricing.status: "failed"` rather than halting execution.
+- **Baseline Architectural Projections:** Calculations represent baseline monthly USD estimates based on standard US region (us-east-1) list rates. For instance-based services (EC2, RDS, ElastiCache, DocumentDB), the model provides an estimated hourly rate corresponding to the recommended instance tier.
+
 ---
 
 ## 🔍 Verification & Testing Scripts
@@ -101,7 +111,9 @@ The repository includes standalone scripts to test and evaluate components indep
 | :--- | :--- | :--- |
 | `scripts/test-llm-provider.js` | Verifies credentials, connectivity, latency, and token metrics for the active provider configured in `.env`. | `node scripts/test-llm-provider.js` |
 | `scripts/compare-llm-providers.js` | Sends an identical test prompt to both Bedrock and Groq to compare outputs side-by-side. | `node scripts/compare-llm-providers.js` |
-| `scripts/test-pipeline-full.js` | Executes the complete 5-step architecture generation pipeline end-to-end and validates output contract integrity. | `node scripts/test-pipeline-full.js` |
+| `scripts/test-pipeline-full.js` | Executes the complete architecture generation pipeline end-to-end (including Step 2.5 pricing) and validates output contract integrity. | `node scripts/test-pipeline-full.js` |
+| `scripts/test-pricing-integration.js` | Validates Step 2.5 pricing schema validation, payload parsing, failure isolation, and dynamic prompt schema generation. | `node scripts/test-pricing-integration.js` |
+| `src/services/pricing/test/pricing-engine.test.js` | Runs unit tests for all 30 deterministic AWS pricing calculators, input validation, and batch calculations. | `npm run test:pricing` |
 | `scripts/rag-index.js` | Builds or updates the local RAG vector index from curated reference architectures. | `npm run rag:index` |
 | `scripts/rag-test.js` | Tests retrieval accuracy and ranking against sample workloads. | `npm run rag:test` |
 
@@ -133,12 +145,11 @@ ArchitectAI/
 │       ├── routes/                       # /generate and /analyse route definitions
 │       ├── controllers/                  # Request handling & error formatting
 │       ├── services/                     # Pipeline orchestrator, validator, and Mermaid services
-│       │   └── llm/                      # Unified LLM provider abstraction
-│       │       ├── llm.service.js        # Provider factory & common interface
-│       │       └── providers/            # Bedrock and Groq provider adapters
+│       │   ├── llm/                      # Unified LLM provider abstraction (Bedrock & Groq)
+│       │   └── pricing/                  # Deterministic AWS pricing engine & canonical schemas
 │       ├── rag/                          # Local vector index, embedder & retrieval engine
 │       ├── config/                       # Environment variable parser
-│       └── prompts/                      # Multi-stage prompt templates
+│       └── prompts/                      # Multi-stage prompt templates (including Step 2.5)
 │
 ├── frontend/                             # React Client-side Application
 │   └── react-app/
@@ -231,6 +242,8 @@ Open `http://localhost:5173` in your browser.
 2. **Model Verbosity Differences**: GPT-OSS 120B produces substantially more verbose JSON output than Llama 3.3 70B. On complex multi-tenant prompts, this can approach or exceed token limits during Step 3 JSON assembly.
 3. **External Rate Limits**: When Step 6 Gemini refinement reaches free-tier rate limits (HTTP 429), the pipeline automatically logs a fallback notice and outputs the verified Step 4 architecture.
 4. **Local Embedding Memory**: First-time execution of `npm run rag:index` downloads the `all-MiniLM-L6-v2` ONNX model weights (~90MB) to local cache.
+5. **Deterministic Pricing Assumptions & Scope**: Cost figures are generated by static formula models using standard us-east-1 baseline list prices. They do not query the live AWS Price List API dynamically, nor do they factor in AWS Savings Plans, Reserved Instance discounts, regional data transfer charges across AZs/regions, or enterprise discount programs. For instance-based services (EC2, RDS, ElastiCache, DocumentDB), the model provides an estimated hourly rate corresponding to the recommended instance tier.
+6. **Service Pricing Coverage**: The deterministic pricing engine currently supports 30 foundational AWS services. Services without dedicated pricing calculators (e.g. Amazon OpenSearch Service, AWS Certificate Manager) are marked as unsupported in the cost summary and preserved in the architecture topology without disrupting pipeline execution.
 
 ---
 
